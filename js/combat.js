@@ -139,58 +139,70 @@ createObstacles() {
 
 
 
-  // Characters Initialization
-  initializeCharacters() {
-    const tileSize = 512;
-    const offsetX =
-      (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
-    const offsetY =
-      (this.cameras.main.height - this.grid.length * tileSize) / 2;
+initializeCharacters() {
+  const tileSize = 512;
+  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
 
-    this.characters = [
-      {
-        name: "Aveugle",
-        color: 0xff0000,
-        x: 0,
-        y: 7,
-        actions: ["Attaquer", "Defendre"],
-        ult: "heal",
-        ultReady: false,
-        hp: 6,
-        u: 0,
-      },
-      {
-        name: "Musicien",
-        color: 0x00ff00,
-        x: 3,
-        y: 7,
-        actions: ["Jouer une note", "Soutenir"],
-        ult: "emp",
-        ultReady: false,
-        hp: 4,
-        u: 0,
-      },
-      {
-        name: "Enregistreur",
-        color: 0x0000ff,
-        x: 7,
-        y: 7,
-        actions: ["Capturer", "Analyser"],
-        ult: "rewind",
-        ultReady: false,
-        hp: 5,
-        u: 0,
-      },
-    ];
+  this.characters = [
+    {
+      name: "Aveugle",
+      spriteKey: "aveugleSprite",
+      x: 0,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "Pierre Résonnante", icon: "pierreIcon" },
+        { name: "Canne Chercheuse", icon: "canneIcon" },
+      ],
+      ult: { name: "Gourde énergisante", icon: "healIcon" },
+      ultReady: false,
+      hp: 6,
+      u: 0,
+    },
+    {
+      name: "Musicien",
+      spriteKey: "musicienSprite",
+      x: 3,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "La musique dans la peau", icon: "musicIcon" },
+        { name: "Rythme endiablé", icon: "rythmIcon" },
+      ],
+      ult: { name: "Douce mélodie", icon: "melodyIcon" },
+      ultReady: false,
+      hp: 4,
+      u: 0,
+    },
+    {
+      name: "Enregistreur",
+      spriteKey: "enregistreurSprite",
+      x: 7,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "Record", icon: "recordIcon" },
+        { name: "Soundboard", icon: "soundboardIcon" },
+      ],
+      ult: { name: "Rewind", icon: "rewindIcon" },
+      ultReady: false,
+      hp: 5,
+      u: 0,
+    },
+  ];
 
-    this.characters.forEach((char) => {
-      const posX = char.x * tileSize + offsetX + tileSize / 2;
-      const posY = char.y * tileSize + offsetY + tileSize / 2;
-      char.visual = this.add
-        .rectangle(posX, posY, tileSize / 2, tileSize / 2, char.color)
-        .setOrigin(0.5, 0.5);
-    });
-  }
+  this.characters.forEach((char) => {
+    const posX = char.x * tileSize + offsetX + tileSize / 2;
+    const posY = char.y * tileSize + offsetY + tileSize / 2;
+    char.visual = this.add
+      .sprite(posX, posY, char.spriteKey)
+      .setOrigin(0.5)
+      .setScale(0.5)
+      .setAngle(char.angle);
+  });
+}
+
 
   // Enemies Initialization
   initializeEnemies() {
@@ -253,31 +265,38 @@ createObstacles() {
   createUI() {
     this.uiContainer = this.add.container(0, 0);
   
-    // Positionner le texte du nom du personnage à gauche
-    this.characterNameText = this.add.text(-3000, -1500, "", {
-      fontSize: "200px",  // Réduire la taille du texte pour plus de lisibilité
+    // Texte du nom du personnage
+    this.characterNameText = this.add.text(-3000, -700, "", {
+      fontSize: "150px",
       fill: "#fff",
     });
     this.uiContainer.add(this.characterNameText);
   
-    // Positionner le bouton "Fin de tour" à gauche
-    this.endTurnButton = this.add
-      .text(3400, 2000, "Fin de tour", {
-        fontSize: "200px",  // Réduire la taille du texte du bouton
-        fill: "#fff",
-        backgroundColor: "#444",
-      })
+    // Image du personnage actif (initialisée à null)
+    this.activeCharacterIcon = this.add.image(-2500, -1300, null).setScale(2);
+    this.uiContainer.add(this.activeCharacterIcon);
+  
+    // Bouton "Fin de tour"
+    this.endTurnButtonIcon = this.add
+      .image(4000, 2000, "endTurnIcon")
+      .setScale(2)
       .setInteractive()
       .on("pointerdown", () => this.endPlayerTurn());
-  
-    this.uiContainer.add(this.endTurnButton);
+    this.uiContainer.add(this.endTurnButtonIcon);
   }
+  
+
   
   updateUI() {
     const activeCharacter = this.characters[this.activeCharacterIndex];
   
-    // Mettre à jour le nom du personnage
+    // Mettre à jour le texte du nom du personnage
     this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
+  
+    // Mettre à jour l'icône du personnage actif
+    this.activeCharacterIcon.setTexture(
+      activeCharacter.name.toLowerCase()
+    );
   
     // Supprimer les anciens boutons d'action
     this.uiContainer.list
@@ -288,14 +307,14 @@ createObstacles() {
     activeCharacter.actions.forEach((action, index) => {
       this.createActionButton(action, index + 1);
     });
-
-    if (!this.playerHasMoved){
+  
+    if (!this.playerHasMoved) {
       this.highlightMovableTiles(activeCharacter);
     } else {
-    // Réinitialiser les surbrillances
-    this.grid.forEach((column) =>
-      column.forEach((tile) => tile.clearTint())
-    );
+      // Réinitialiser les surbrillances
+      this.grid.forEach((column) =>
+        column.forEach((tile) => tile.clearTint())
+      );
     }
   
     // Créer le bouton de l'ultime si nécessaire
@@ -306,14 +325,22 @@ createObstacles() {
     this.createActionButton(activeCharacter.ult, 3, activeCharacter.ultReady);
   }
   
-  createActionButton(actionName, actionIndex, ready = true) {
-    const offsetX = -3000;  // Garder l'alignement à gauche
-    const offsetY = 500 + actionIndex * 500;  // Espacement entre les boutons
+  
+  createActionButton(action, actionIndex, ready = true) {
+    const offsetX = -3000; // Garder l'alignement à gauche
+    const offsetY = 500 + actionIndex * 600; // Espacement entre les boutons
     const backgroundColor = actionIndex === 3 && !ready ? "#ff0000" : "#444";
   
+    // Ajout de l'image d'action
+    const actionImage = this.add
+      .image(offsetX + 500, offsetY - 200, action.icon) // Positionner l'image
+      .setScale(2)
+      .setOrigin(0.5);
+  
+    // Ajout du bouton texte
     const button = this.add
-      .text(offsetX, offsetY, actionName, {
-        fontSize: "200px",  // Réduire la taille du texte du bouton
+      .text(offsetX, offsetY, action.name, {
+        fontSize: "100px", // Réduire la taille du texte du bouton
         fill: "#fff",
         backgroundColor,
         padding: { x: 10, y: 5 },
@@ -328,8 +355,12 @@ createObstacles() {
       });
   
     button.isActionButton = true;
+    actionImage.isActionButton = true;
+  
+    this.uiContainer.add(actionImage);
     this.uiContainer.add(button);
   }
+  
 
   performLineAttack(character) {
     console.log(`${character.name} effectue une attaque en ligne.`);
@@ -443,13 +474,13 @@ createObstacles() {
 
   handleTileClick(tile) {
     if (this.isEnemyTurn || this.playerHasMoved) return;
-
+  
     const activeCharacter = this.characters[this.activeCharacterIndex];
-
+  
     const distance =
       Math.abs(tile.gridX - activeCharacter.x) +
       Math.abs(tile.gridY - activeCharacter.y);
-
+  
     if (
       distance === 1 &&
       !tile.isObstacle &&
@@ -457,20 +488,31 @@ createObstacles() {
         (char) => char.x === tile.gridX && char.y === tile.gridY
       )
     ) {
+      const dx = tile.gridX - activeCharacter.x;
+      const dy = tile.gridY - activeCharacter.y;
+  
+      // Ajuste la position
       activeCharacter.x = tile.gridX;
       activeCharacter.y = tile.gridY;
-
+  
+      // Définit l'angle en fonction de la direction
+      if (dx === 1) activeCharacter.visual.setAngle(90); // Droite
+      else if (dx === -1) activeCharacter.visual.setAngle(270); // Gauche
+      else if (dy === 1) activeCharacter.visual.setAngle(180); // Bas
+      else if (dy === -1) activeCharacter.visual.setAngle(0); // Haut
+  
       const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
       const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
-
+  
       activeCharacter.visual.x = tile.gridX * 512 + offsetX + 256;
       activeCharacter.visual.y = tile.gridY * 512 + offsetY + 256;
-
+  
       this.playerHasMoved = true;
-
+  
       this.updateUI();
     }
   }
+  
 
   getCurrentEntity() {
     return this.characters[this.activeCharacterIndex];
