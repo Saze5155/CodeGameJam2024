@@ -24,71 +24,124 @@ export default class Combat extends Phaser.Scene {
     this.updateUI();
   }
 
-  // Grid Initialization
-  initializeGrid() {
-    const camera = this.cameras.main;
-    const gridWidth = 8;
-    const gridHeight = 8;
-    const tileSize = 64;
+initializeGrid() {
+  const camera = this.cameras.main;
+  const gridWidth = 8; // Nombre de colonnes
+  const gridHeight = 8; // Nombre de lignes
+  const tileSize = 512; // Taille de la tuile (largeur et hauteur)
 
-    const offsetX = (camera.width - gridWidth * tileSize) / 2;
-    const offsetY = (camera.height - gridHeight * tileSize) / 2;
+  const offsetX = (camera.width - gridWidth * tileSize) / 2;
+  const offsetY = (camera.height - gridHeight * tileSize) / 2;
 
-    this.grid = [];
-    for (let x = 0; x < gridWidth; x++) {
-      this.grid[x] = [];
-      for (let y = 0; y < gridHeight; y++) {
-        const posX = x * tileSize + offsetX;
-        const posY = y * tileSize + offsetY;
-        const color = (x + y) % 2 === 0 ? 0xffffff : 0x000000;
+  this.grid = [];
+  for (let x = 0; x < gridWidth; x++) {
+    this.grid[x] = [];
+    for (let y = 0; y < gridHeight; y++) {
+      const posX = x * tileSize + offsetX;
+      const posY = y * tileSize + offsetY;
+      const tileKey = (x + y) % 2 === 0 ? 'whiteTile' : 'blackTile';
 
-        const tile = this.add
-          .rectangle(posX, posY, tileSize, tileSize, color)
-          .setOrigin(0, 0)
-          .setInteractive();
+      // Crée le sprite avec sa taille native (512x512)
+      const tile = this.add.sprite(posX + tileSize / 2, posY + tileSize / 2, tileKey).setOrigin(0.5);
 
-        tile.gridX = x;
-        tile.gridY = y;
-        tile.on("pointerdown", () => this.handleTileClick(tile));
-        this.grid[x][y] = tile;
-      }
+      tile.gridX = x;
+      tile.gridY = y;
+      tile.setInteractive();
+      tile.on("pointerdown", () => this.handleTileClick(tile));
+      this.grid[x][y] = tile;
     }
   }
+}
 
-  // Obstacles Initialization
-  createObstacles() {
-    const obstaclePositions = [
-      { x: 4, y: 4 },
-      { x: 2, y: 3 },
-      { x: 5, y: 6 },
+// Dans la méthode createObstacles() :
+createObstacles() {
+  const tileSize = 512;
+  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
+  const camera = this.cameras.main;
+
+  // Ajustez le zoom (valeur inférieure à 1 pour dézoomer)
+  camera.setZoom(0.2);
+
+  const minObstacles = 5;
+  const maxObstacles = 8;
+  const totalObstacles = Phaser.Math.Between(minObstacles, maxObstacles);
+
+  this.obstacles = [];
+
+  // Fonction pour vérifier si une position est valide
+  const isValidPosition = (x, y) => {
+    // Pas sur les deux premières et deux dernières lignes
+    if (y < 2 || y > this.grid.length - 3) return false;
+
+    // Vérifie les positions adjacentes
+    const adjacentOffsets = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
     ];
 
-    const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-    const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+    const adjacentObstacles = adjacentOffsets.reduce((count, offset) => {
+      const nx = x + offset.dx;
+      const ny = y + offset.dy;
+      return (
+        count +
+        (this.grid[nx] && this.grid[nx][ny] && this.grid[nx][ny].isObstacle
+          ? 1
+          : 0)
+      );
+    }, 0);
 
-    this.obstacles = [];
-    obstaclePositions.forEach((pos) => {
-      if (this.grid[pos.x] && this.grid[pos.x][pos.y]) {
-        const posX = pos.x * 64 + offsetX;
-        const posY = pos.y * 64 + offsetY;
+    // Pas plus de 2 obstacles côte à côte
+    if (adjacentObstacles >= 3) return false;
 
-        const obstacle = this.add
-          .rectangle(posX, posY, 64, 64, 0xff00ff)
-          .setOrigin(0, 0);
+    return true;
+  };
 
-        obstacle.gridX = pos.x;
-        obstacle.gridY = pos.y;
-        obstacle.isObstacle = true;
-        this.obstacles.push(obstacle);
+  let attempts = 0;
+  while (this.obstacles.length < totalObstacles && attempts < 1000) {
+    const x = Phaser.Math.Between(0, this.grid.length - 1);
+    const y = Phaser.Math.Between(2, this.grid[0].length - 3); // Évite les deux premières et dernières lignes
 
-        this.grid[pos.x][pos.y].isObstacle = true;
-      }
-    });
+    // Vérifie si la position est valide
+    if (!this.grid[x][y].isObstacle && isValidPosition(x, y)) {
+      const posX = x * tileSize + offsetX + tileSize / 2;
+      const posY = y * tileSize + offsetY + tileSize / 2;
+
+      // Choisissez aléatoirement une image pour l'obstacle
+      const obstacleImage = Phaser.Math.Between(0, 1) === 0 ? 'bonkTile' : 'bonkTileCaisse';
+
+      // Créez un sprite d'obstacle avec l'image sélectionnée
+      const obstacle = this.add.sprite(posX, posY, obstacleImage).setOrigin(0.5);
+
+      // Facultatif : ajuster l'échelle pour correspondre à la taille de la tuile
+      obstacle.setDisplaySize(tileSize, tileSize);
+
+      obstacle.gridX = x;
+      obstacle.gridY = y;
+      obstacle.isObstacle = true;
+
+      this.obstacles.push(obstacle);
+
+      this.grid[x][y].isObstacle = true;
+    }
+
+    attempts++;
   }
+
+  if (this.obstacles.length < minObstacles) {
+    console.warn(
+      `Nombre insuffisant d'obstacles générés (${this.obstacles.length}). Réessayez.`
+    );
+  }
+}
+
+
 
   // Characters Initialization
   initializeCharacters() {
-    const tileSize = 64;
+    const tileSize = 512;
     const offsetX =
       (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
     const offsetY =
@@ -141,7 +194,7 @@ export default class Combat extends Phaser.Scene {
 
   // Enemies Initialization
   initializeEnemies() {
-    const tileSize = 64;
+    const tileSize = 512;
     const offsetX =
       (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
     const offsetY =
@@ -161,63 +214,106 @@ export default class Combat extends Phaser.Scene {
     });
   }
 
-  // UI Initialization
-  createUI() {
-    this.uiContainer = this.add.container(10, 10);
 
-    this.characterNameText = this.add.text(0, 0, "", {
-      fontSize: "16px",
+  highlightMovableTiles(character) {
+    this.grid.forEach((column, x) =>
+      column.forEach((tile, y) => {
+        tile.clearTint(); // Réinitialise toutes les teintes
+        console.log(`Case (${x}, ${y}) réinitialisée.`);
+      })
+    );
+  
+    if (!character) return;
+  
+    const { x, y } = character;
+    const possibleMoves = [
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+    ];
+  
+    possibleMoves.forEach(({ dx, dy }) => {
+      const newX = x + dx;
+      const newY = y + dy;
+  
+      if (
+        newX >= 0 &&
+        newX < this.grid.length &&
+        newY >= 0 &&
+        newY < this.grid[0].length &&
+        !this.grid[newX][newY].isObstacle
+      ) {
+        console.log(`Highlight case (${newX}, ${newY})`);
+        this.grid[newX][newY].setTint(0x00ff00); // Vert
+      }
+    });
+  }
+
+  createUI() {
+    this.uiContainer = this.add.container(0, 0);
+  
+    // Positionner le texte du nom du personnage à gauche
+    this.characterNameText = this.add.text(-3000, -1500, "", {
+      fontSize: "200px",  // Réduire la taille du texte pour plus de lisibilité
       fill: "#fff",
     });
     this.uiContainer.add(this.characterNameText);
-
+  
+    // Positionner le bouton "Fin de tour" à gauche
     this.endTurnButton = this.add
-      .text(10, 60, "Fin de tour", {
-        fontSize: "14px",
+      .text(3400, 2000, "Fin de tour", {
+        fontSize: "200px",  // Réduire la taille du texte du bouton
         fill: "#fff",
         backgroundColor: "#444",
       })
       .setInteractive()
       .on("pointerdown", () => this.endPlayerTurn());
-
+  
     this.uiContainer.add(this.endTurnButton);
   }
-
+  
   updateUI() {
     const activeCharacter = this.characters[this.activeCharacterIndex];
-
-    // Supprime uniquement les boutons d'action et d'ultime
+  
+    // Mettre à jour le nom du personnage
+    this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
+  
+    // Supprimer les anciens boutons d'action
     this.uiContainer.list
       .filter((child) => child.isActionButton)
       .forEach((button) => button.destroy());
-
-    this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
-
+  
+    // Créer de nouveaux boutons d'action
     activeCharacter.actions.forEach((action, index) => {
       this.createActionButton(action, index + 1);
     });
 
-    if (activeCharacter.u === 3) {
-      activeCharacter.ultReady = true; // Débloque l'ultime après un tour complet
-    }
-
-    this.createActionButton(activeCharacter.ult, 3, activeCharacter.ultReady);
-
-    if (!this.playerHasMoved) {
+    if (!this.playerHasMoved){
       this.highlightMovableTiles(activeCharacter);
     } else {
-      this.clearTileHighlights();
+    // Réinitialiser les surbrillances
+    this.grid.forEach((column) =>
+      column.forEach((tile) => tile.clearTint())
+    );
     }
+  
+    // Créer le bouton de l'ultime si nécessaire
+    if (activeCharacter.u === 3) {
+      activeCharacter.ultReady = true;
+    }
+  
+    this.createActionButton(activeCharacter.ult, 3, activeCharacter.ultReady);
   }
-
+  
   createActionButton(actionName, actionIndex, ready = true) {
-    const offsetX = 10;
-    const offsetY = 120 + actionIndex * 30;
+    const offsetX = -3000;  // Garder l'alignement à gauche
+    const offsetY = 500 + actionIndex * 500;  // Espacement entre les boutons
     const backgroundColor = actionIndex === 3 && !ready ? "#ff0000" : "#444";
-
+  
     const button = this.add
       .text(offsetX, offsetY, actionName, {
-        fontSize: "14px",
+        fontSize: "200px",  // Réduire la taille du texte du bouton
         fill: "#fff",
         backgroundColor,
         padding: { x: 10, y: 5 },
@@ -230,30 +326,9 @@ export default class Combat extends Phaser.Scene {
           this.handleAction(actionIndex);
         }
       });
-
+  
     button.isActionButton = true;
     this.uiContainer.add(button);
-  }
-
-  handleAction(actionIndex) {
-    const activeCharacter = this.characters[this.activeCharacterIndex];
-
-    // Gestion des actions spécifiques aux personnages
-    if (actionIndex === 1) {
-      this.performLineAttack(activeCharacter);
-    } else if (actionIndex === 2) {
-      this.performCrossAttack(activeCharacter);
-    } else if (actionIndex === 3) {
-      if (activeCharacter.ultReady) {
-        this.performUltimate(activeCharacter);
-        activeCharacter.ultReady = false;
-      } else {
-        console.log("Ultime non disponible !");
-      }
-    }
-
-    this.playerHasActed = true;
-    this.updateUI();
   }
 
   performLineAttack(character) {
@@ -277,7 +352,11 @@ export default class Combat extends Phaser.Scene {
     const activeCharacter = this.getCurrentEntity();
     if (activeCharacter.u < 3) activeCharacter.u++;
 
-    this.clearTileHighlights();
+    // Réinitialiser les surbrillances
+    this.grid.forEach((column) =>
+      column.forEach((tile) => tile.clearTint())
+    );
+
     this.startEnemyTurn();
   }
 
@@ -342,12 +421,12 @@ export default class Combat extends Phaser.Scene {
           enemy.y = newY;
 
           const offsetX =
-            (this.cameras.main.width - this.grid[0].length * 64) / 2;
+            (this.cameras.main.width - this.grid[0].length * 512) / 2;
           const offsetY =
-            (this.cameras.main.height - this.grid.length * 64) / 2;
+            (this.cameras.main.height - this.grid.length * 512) / 2;
 
-          enemy.visual.x = enemy.x * 64 + offsetX + 32;
-          enemy.visual.y = enemy.y * 64 + offsetY + 32;
+          enemy.visual.x = enemy.x * 512 + offsetX + 256;
+          enemy.visual.y = enemy.y * 512 + offsetY + 256;
           break;
         }
       }
@@ -360,42 +439,6 @@ export default class Combat extends Phaser.Scene {
     this.activeCharacterIndex =
       (this.activeCharacterIndex + 1) % this.characters.length;
     this.updateUI();
-  }
-
-  highlightMovableTiles(entity) {
-    this.clearTileHighlights();
-    const directions = [
-      { x: 0, y: -1 },
-      { x: 0, y: 1 },
-      { x: -1, y: 0 },
-      { x: 1, y: 0 },
-    ];
-
-    directions.forEach((dir) => {
-      const targetX = entity.x + dir.x;
-      const targetY = entity.y + dir.y;
-
-      if (
-        targetX >= 0 &&
-        targetX < this.grid.length &&
-        targetY >= 0 &&
-        targetY < this.grid[0].length &&
-        !this.grid[targetX][targetY].isObstacle &&
-        !this.characters.some(
-          (char) => char.x === targetX && char.y === targetY
-        )
-      ) {
-        this.grid[targetX][targetY].setFillStyle(0x87cefa);
-      }
-    });
-  }
-
-  clearTileHighlights() {
-    this.grid.flat().forEach((tile) => {
-      const baseColor =
-        (tile.gridX + tile.gridY) % 2 === 0 ? 0xffffff : 0x000000;
-      tile.setFillStyle(baseColor);
-    });
   }
 
   handleTileClick(tile) {
@@ -417,14 +460,14 @@ export default class Combat extends Phaser.Scene {
       activeCharacter.x = tile.gridX;
       activeCharacter.y = tile.gridY;
 
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
+      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
 
-      activeCharacter.visual.x = tile.gridX * 64 + offsetX + 32;
-      activeCharacter.visual.y = tile.gridY * 64 + offsetY + 32;
+      activeCharacter.visual.x = tile.gridX * 512 + offsetX + 256;
+      activeCharacter.visual.y = tile.gridY * 512 + offsetY + 256;
 
       this.playerHasMoved = true;
-      this.clearTileHighlights();
+
       this.updateUI();
     }
   }
