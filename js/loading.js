@@ -59,6 +59,7 @@ export default class loading {
     );
 
     this.load.image("bossSprite", "./assets/spritesheets/enemy/boss.png");
+
     this.load.image(
       "gramophoneSprite",
       "./assets/spritesheets/enemy/gramophone/gramophone.png"
@@ -67,6 +68,41 @@ export default class loading {
       "megaphoneSprite",
       "./assets/spritesheets/enemy/megaphone/megaphone.png"
     );
+
+    load.image("bossSprite", "./assets/spritesheets/enemy/boss.png");
+
+    this.load.music("ecran_titre", "./assets/musique/ecran_titre.mp3");
+    this.load.music("combat", "./assets/musique/combat.mp3");
+    this.load.music("boss", "./assets/musique/boss.mp3");
+
+    this.load.music(
+      "gramophone",
+      "./assets/musique/Ennemis/atk_gramophone.mp3"
+    );
+    this.load.music("boss_atk1", "./assets/musique/Ennemis/boss_atk1.mp3");
+    this.load.music("boss_summon", "./assets/musique/Ennemis/boss_summon.mp3");
+    this.load.music("rocker_atk1", "./assets/musique/Ennemis/rocker_atk1.mp3");
+    this.load.music(
+      "steampunk_atk1",
+      "./assets/musique/Ennemis/steampunk_atk1.mp3"
+    );
+    this.load.music(
+      "steampunk_atk2",
+      "./assets/musique/Ennemis/steampunk_atk2.mp3"
+    );
+
+    this.load.music("canne", "./assets/musique/Persos/canne.mp3");
+    this.load.music("charme", "./assets/musique/Persos/charme.mp3");
+    this.load.music("gourde", "./assets/musique/Persos/gourde.mp3");
+    this.load.music("musique_peau", "./assets/musique/Persos/musique_peau.mp3");
+    this.load.music(
+      "pierre_resonante",
+      "./assets/musique/Persos/pierre_resonante.mp3"
+    );
+    this.load.music("record", "./assets/musique/Persos/record.mp3");
+    this.load.music("rewind", "./assets/musique/Persos/rewind.mp3");
+    this.load.music("rythme", "./assets/musique/Persos/rythme.mp3");
+    this.load.music("soundboard", "./assets/musique/Persos/soundboard.mp3");
   }
 
   create() {
