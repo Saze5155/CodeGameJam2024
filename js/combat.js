@@ -17,6 +17,10 @@ export default class Combat extends Phaser.Scene {
 
   // Phaser create method
   create() {
+    this.background = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0000ff)
+      .setOrigin(0, 0);
+
     this.initializeGrid();
     this.createObstacles();
     this.initializeCharacters();
@@ -98,7 +102,15 @@ export default class Combat extends Phaser.Scene {
 
     // Ajustez le zoom (valeur inférieure à 1 pour dézoomer)
     camera.setZoom(0.2);
-
+    this.background = this.add
+      .image(0, 0, "back")
+      .setOrigin(0.4, 0.4)
+      .setDisplaySize(
+        this.cameras.main.width / camera.zoom,
+        this.cameras.main.height / camera.zoom
+      );
+    camera.centerOn(this.background.width / 2, this.background.height / 2);
+    this.children.sendToBack(this.background);
     const minObstacles = 5;
     const maxObstacles = 8;
     const totalObstacles = Phaser.Math.Between(minObstacles, maxObstacles);
@@ -326,14 +338,6 @@ export default class Combat extends Phaser.Scene {
   createUI() {
     this.uiContainer = this.add.container(0, 0);
 
-    // Texte du nom du personnage
-    this.characterNameText = this.add.text(-3000, -700, "", {
-      fontSize: "150px",
-      fill: "#fff",
-    });
-    this.uiContainer.add(this.characterNameText);
-
-    // Image du personnage actif (initialisée à null)
     this.activeCharacterIcon = this.add.image(-2500, -1300, null).setScale(2);
     this.uiContainer.add(this.activeCharacterIcon);
 
@@ -360,10 +364,11 @@ export default class Combat extends Phaser.Scene {
       return;
     }
     this.checkEndConditions(); // Mettre à jour le texte du nom du personnage
-    this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
+    this.fond = this.add.image(0, 0, "portrait").setOrigin(1.7, 1).setScale(5);
 
-    // Mettre à jour l'icône du personnage actif
-    this.activeCharacterIcon.setTexture(activeCharacter.name.toLowerCase());
+    this.portrait = this.activeCharacterIcon.setTexture(
+      activeCharacter.name.toLowerCase()
+    );
 
     this.uiContainer.list
       .filter((child) => child.isActionButton)
@@ -673,7 +678,7 @@ export default class Combat extends Phaser.Scene {
           (en) => en.x === targetX && en.y === targetY
         );
         enemy.hp -= 1;
-        this.sound.play('pierre_resonante');
+        this.sound.play("pierre_resonante");
         console.log(
           `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
         );
@@ -724,7 +729,7 @@ export default class Combat extends Phaser.Scene {
           console.log(
             `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
           );
-          this.sound.play('canne');
+          this.sound.play("canne");
         }
 
         // Révèle la case en couleur
@@ -740,12 +745,12 @@ export default class Combat extends Phaser.Scene {
     this.characters.forEach((char) => {
       char.hp += 2; // Réinitialise l'opacité des personnages
     });
-    this.sound.play('gourde');
+    this.sound.play("gourde");
   }
 
   performRhythmAttack(character) {
     // Logique pour l'attaque rythmée
-    this.sound.play('rythme');
+    this.sound.play("rythme");
   }
 
   performBuffOrDebuff(character) {
@@ -818,13 +823,13 @@ export default class Combat extends Phaser.Scene {
 
           if (isAlly) {
             target.buff = { atkBoost: 1 };
-            this.sound.play('musique_peau');
+            this.sound.play("musique_peau");
             console.log(
               `${target.name} reçoit un buff de +1 ATK pour son prochain coup.`
             );
           } else {
             target.debuff = { cannotMove: true };
-            this.sound.play('musique_peau');
+            this.sound.play("musique_peau");
             console.log(
               `${target.name} ne peut pas bouger pendant son prochain tour.`
             );
@@ -883,13 +888,13 @@ export default class Combat extends Phaser.Scene {
   performCharm(character) {
     const activeCharacter = this.getCurrentEntity();
     activeCharacter.u = 0;
-    this.sound.play('charme');
+    this.sound.play("charme");
   }
 
   recordAction(character) {
     console.log(`${character.name} patiente ce tour.`);
 
-    this.sound.play('record');
+    this.sound.play("record");
 
     // Désactive les actions et les déplacements pour ce tour
     this.playerHasMoved = true;
@@ -904,7 +909,7 @@ export default class Combat extends Phaser.Scene {
   playRecordedAction(character) {
     if (!this.patient) return;
     this.patient = false;
-    this.sound.play('soundboard');
+    this.sound.play("soundboard");
     console.log(`${character.name} utilise sa prochaine action.`);
 
     // Diminue légèrement l'opacité des autres personnages et ennemis pour indiquer un focus
@@ -1021,7 +1026,7 @@ export default class Combat extends Phaser.Scene {
 
       if (enemy) {
         enemy.hp -= 3; // Inflige 3 dégâts
-        this.sound.play('rocker_atk1');
+        this.sound.play("rocker_atk1");
         console.log(`${enemy.name} touché ! HP restant : ${enemy.hp}`);
       }
     });
@@ -1054,7 +1059,7 @@ export default class Combat extends Phaser.Scene {
           character.visual.y = character.y * 512 + offsetY + 256;
           ally.visual.x = ally.x * 512 + offsetX + 256;
           ally.visual.y = ally.y * 512 + offsetY + 256;
-          this.sound.play('gourde');
+          this.sound.play("gourde");
 
           // Désactive les clics et nettoie
           this.characters.forEach((char) => char.visual.removeInteractive());
@@ -1064,7 +1069,7 @@ export default class Combat extends Phaser.Scene {
   }
 
   performRewind(character) {
-    this.sound.play('rewind');
+    this.sound.play("rewind");
     const activeCharacter = this.getCurrentEntity();
     activeCharacter.u = 0;
     this.restoreGameState();

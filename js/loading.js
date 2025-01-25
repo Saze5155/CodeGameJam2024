@@ -44,6 +44,7 @@ export default class loading {
     this.load.image("hpBarAveugle6_2", "./assets/ui/hpbar/hpbar6_2.png");
     this.load.image("hpBarAveugle6_1", "./assets/ui/hpbar/hpbar6_1.png");
     this.load.image("ordre_action", "./assets/ui/portraits/ordre_action.png");
+    this.load.image("back", "./assets/images/fond_ecran.png");
 
     this.load.image(
       "enregistreurSprite",
@@ -68,6 +69,8 @@ export default class loading {
       "megaphoneSprite",
       "./assets/spritesheets/enemy/megaphone/megaphone.png"
     );
+
+    this.load.image("portrait", "./assets/ui/portrait.png");
 
     this.load.audio("ecran_titre", "./assets/musique/ecran_titre.mp3");
     this.load.audio("combat", "./assets/musique/combat.mp3");
@@ -107,6 +110,6 @@ export default class loading {
     this.scene.add("combat", combat, false);
     this.scene.add("MainMenu", acceuil, false);
     this.scene.add("story", story, false);
-    this.scene.start("MainMenu");
+    this.scene.start("combat");
   }
 }

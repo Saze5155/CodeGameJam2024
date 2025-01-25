@@ -40,7 +40,7 @@ export default class StoryIntro extends Phaser.Scene {
     );
 
     // Effet de fondu au noir après 5 secondes
-    this.time.delayedCall(5000, () => {
+    this.time.delayedCall(3000, () => {
       this.tweens.add({
         targets: image,
         alpha: 0,

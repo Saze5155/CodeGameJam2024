@@ -10,7 +10,8 @@ export default class MainMenu extends Phaser.Scene {
   }
 
   create() {
-    // Add the background image
+    const music = this.sound.add("ecran_titre");
+    music.play();
     this.background = this.add
       .image(0, 0, "ecran-jeu")
       .setOrigin(0, 0)
