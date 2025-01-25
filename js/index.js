@@ -1,4 +1,4 @@
-import loading from "/js/loading.js";
+import loading from "./loading.js";
 
 const config = {
   type: Phaser.AUTO,

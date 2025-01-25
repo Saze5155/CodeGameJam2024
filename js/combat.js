@@ -25,35 +25,37 @@ export default class Combat extends Phaser.Scene {
     this.updateUI();
   }
 
-initializeGrid() {
-  const camera = this.cameras.main;
-  const gridWidth = 8; // Nombre de colonnes
-  const gridHeight = 8; // Nombre de lignes
-  const tileSize = 512; // Taille de la tuile (largeur et hauteur)
+  initializeGrid() {
+    const camera = this.cameras.main;
+    const gridWidth = 8; // Nombre de colonnes
+    const gridHeight = 8; // Nombre de lignes
+    const tileSize = 512; // Taille de la tuile (largeur et hauteur)
 
-  const offsetX = (camera.width - gridWidth * tileSize) / 2;
-  const offsetY = (camera.height - gridHeight * tileSize) / 2;
+    const offsetX = (camera.width - gridWidth * tileSize) / 2;
+    const offsetY = (camera.height - gridHeight * tileSize) / 2;
 
-  this.grid = [];
-  for (let x = 0; x < gridWidth; x++) {
-    this.grid[x] = [];
-    for (let y = 0; y < gridHeight; y++) {
-      const posX = x * tileSize + offsetX;
-      const posY = y * tileSize + offsetY;
-      const tileKey = (x + y) % 2 === 0 ? 'whiteTile' : 'blackTile';
+    this.grid = [];
+    for (let x = 0; x < gridWidth; x++) {
+      this.grid[x] = [];
+      for (let y = 0; y < gridHeight; y++) {
+        const posX = x * tileSize + offsetX;
+        const posY = y * tileSize + offsetY;
+        const tileKey = (x + y) % 2 === 0 ? "whiteTile" : "blackTile";
 
-      // Crée le sprite avec sa taille native (512x512)
-      const tile = this.add.sprite(posX + tileSize / 2, posY + tileSize / 2, tileKey).setOrigin(0.5);
+        // Crée le sprite avec sa taille native (512x512)
+        const tile = this.add
+          .sprite(posX + tileSize / 2, posY + tileSize / 2, tileKey)
+          .setOrigin(0.5);
 
-      tile.gridX = x;
-      tile.gridY = y;
-      tile.setInteractive();
-      tile.on("pointerdown", () => this.handleTileClick(tile));
-      this.grid[x][y] = tile;
+        tile.gridX = x;
+        tile.gridY = y;
+        tile.setInteractive();
+        tile.on("pointerdown", () => this.handleTileClick(tile));
+        this.grid[x][y] = tile;
+      }
     }
   }
-}
-  
+
   saveGameState() {
     const state = {
       characters: this.characters.map((char) => ({
@@ -85,156 +87,160 @@ initializeGrid() {
     console.log("État sauvegardé :", state);
   }
 
-// Dans la méthode createObstacles() :
-createObstacles() {
-  const tileSize = 512;
-  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
-  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
-  const camera = this.cameras.main;
+  // Dans la méthode createObstacles() :
+  createObstacles() {
+    const tileSize = 512;
+    const offsetX =
+      (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+    const offsetY =
+      (this.cameras.main.height - this.grid.length * tileSize) / 2;
+    const camera = this.cameras.main;
 
-  // Ajustez le zoom (valeur inférieure à 1 pour dézoomer)
-  camera.setZoom(0.2);
+    // Ajustez le zoom (valeur inférieure à 1 pour dézoomer)
+    camera.setZoom(0.2);
 
-  const minObstacles = 5;
-  const maxObstacles = 8;
-  const totalObstacles = Phaser.Math.Between(minObstacles, maxObstacles);
+    const minObstacles = 5;
+    const maxObstacles = 8;
+    const totalObstacles = Phaser.Math.Between(minObstacles, maxObstacles);
 
-  this.obstacles = [];
+    this.obstacles = [];
 
-  // Fonction pour vérifier si une position est valide
-  const isValidPosition = (x, y) => {
-    // Pas sur les deux premières et deux dernières lignes
-    if (y < 2 || y > this.grid.length - 3) return false;
+    // Fonction pour vérifier si une position est valide
+    const isValidPosition = (x, y) => {
+      // Pas sur les deux premières et deux dernières lignes
+      if (y < 2 || y > this.grid.length - 3) return false;
 
-    // Vérifie les positions adjacentes
-    const adjacentOffsets = [
-      { dx: 1, dy: 0 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 0, dy: -1 },
-    ];
+      // Vérifie les positions adjacentes
+      const adjacentOffsets = [
+        { dx: 1, dy: 0 },
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 },
+        { dx: 0, dy: -1 },
+      ];
 
-    const adjacentObstacles = adjacentOffsets.reduce((count, offset) => {
-      const nx = x + offset.dx;
-      const ny = y + offset.dy;
-      return (
-        count +
-        (this.grid[nx] && this.grid[nx][ny] && this.grid[nx][ny].isObstacle
-          ? 1
-          : 0)
-      );
-    }, 0);
+      const adjacentObstacles = adjacentOffsets.reduce((count, offset) => {
+        const nx = x + offset.dx;
+        const ny = y + offset.dy;
+        return (
+          count +
+          (this.grid[nx] && this.grid[nx][ny] && this.grid[nx][ny].isObstacle
+            ? 1
+            : 0)
+        );
+      }, 0);
 
-    // Pas plus de 2 obstacles côte à côte
-    if (adjacentObstacles >= 3) return false;
+      // Pas plus de 2 obstacles côte à côte
+      if (adjacentObstacles >= 3) return false;
 
-    return true;
-  };
+      return true;
+    };
 
-  let attempts = 0;
-  while (this.obstacles.length < totalObstacles && attempts < 1000) {
-    const x = Phaser.Math.Between(0, this.grid.length - 1);
-    const y = Phaser.Math.Between(2, this.grid[0].length - 3); // Évite les deux premières et dernières lignes
+    let attempts = 0;
+    while (this.obstacles.length < totalObstacles && attempts < 1000) {
+      const x = Phaser.Math.Between(0, this.grid.length - 1);
+      const y = Phaser.Math.Between(2, this.grid[0].length - 3); // Évite les deux premières et dernières lignes
 
-    // Vérifie si la position est valide
-    if (!this.grid[x][y].isObstacle && isValidPosition(x, y)) {
-      const posX = x * tileSize + offsetX + tileSize / 2;
-      const posY = y * tileSize + offsetY + tileSize / 2;
+      // Vérifie si la position est valide
+      if (!this.grid[x][y].isObstacle && isValidPosition(x, y)) {
+        const posX = x * tileSize + offsetX + tileSize / 2;
+        const posY = y * tileSize + offsetY + tileSize / 2;
 
-      // Choisissez aléatoirement une image pour l'obstacle
-      const obstacleImage = Phaser.Math.Between(0, 1) === 0 ? 'bonkTile' : 'bonkTileCaisse';
+        // Choisissez aléatoirement une image pour l'obstacle
+        const obstacleImage =
+          Phaser.Math.Between(0, 1) === 0 ? "bonkTile" : "bonkTileCaisse";
 
-      // Créez un sprite d'obstacle avec l'image sélectionnée
-      const obstacle = this.add.sprite(posX, posY, obstacleImage).setOrigin(0.5);
+        // Créez un sprite d'obstacle avec l'image sélectionnée
+        const obstacle = this.add
+          .sprite(posX, posY, obstacleImage)
+          .setOrigin(0.5);
 
-      // Facultatif : ajuster l'échelle pour correspondre à la taille de la tuile
-      obstacle.setDisplaySize(tileSize, tileSize);
+        // Facultatif : ajuster l'échelle pour correspondre à la taille de la tuile
+        obstacle.setDisplaySize(tileSize, tileSize);
 
-      obstacle.gridX = x;
-      obstacle.gridY = y;
-      obstacle.isObstacle = true;
+        obstacle.gridX = x;
+        obstacle.gridY = y;
+        obstacle.isObstacle = true;
 
-      this.obstacles.push(obstacle);
+        this.obstacles.push(obstacle);
 
-      this.grid[x][y].isObstacle = true;
+        this.grid[x][y].isObstacle = true;
+      }
+
+      attempts++;
     }
 
-    attempts++;
+    if (this.obstacles.length < minObstacles) {
+      console.warn(
+        `Nombre insuffisant d'obstacles générés (${this.obstacles.length}). Réessayez.`
+      );
+    }
   }
 
-  if (this.obstacles.length < minObstacles) {
-    console.warn(
-      `Nombre insuffisant d'obstacles générés (${this.obstacles.length}). Réessayez.`
-    );
+  initializeCharacters() {
+    const tileSize = 512;
+    const offsetX =
+      (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+    const offsetY =
+      (this.cameras.main.height - this.grid.length * tileSize) / 2;
+
+    this.characters = [
+      {
+        name: "Aveugle",
+        spriteKey: "aveugleSprite",
+        x: 0,
+        y: 7,
+        angle: 90, // Direction initiale (vers le bas)
+        actions: [
+          { name: "Pierre Résonnante", icon: "pierreIcon" },
+          { name: "Canne Chercheuse", icon: "canneIcon" },
+        ],
+        ult: { name: "Gourde énergisante", icon: "healIcon" },
+        ultReady: false,
+        hp: 6,
+        u: 0,
+      },
+      {
+        name: "Musicien",
+        spriteKey: "musicienSprite",
+        x: 3,
+        y: 7,
+        angle: 90, // Direction initiale (vers le bas)
+        actions: [
+          { name: "La musique dans la peau", icon: "musicIcon" },
+          { name: "Rythme endiablé", icon: "rythmIcon" },
+        ],
+        ult: { name: "Douce mélodie", icon: "melodyIcon" },
+        ultReady: false,
+        hp: 4,
+        u: 0,
+      },
+      {
+        name: "Enregistreur",
+        spriteKey: "enregistreurSprite",
+        x: 7,
+        y: 7,
+        angle: 90, // Direction initiale (vers le bas)
+        actions: [
+          { name: "Record", icon: "recordIcon" },
+          { name: "Soundboard", icon: "soundboardIcon" },
+        ],
+        ult: { name: "Rewind", icon: "rewindIcon" },
+        ultReady: false,
+        hp: 5,
+        u: 0,
+      },
+    ];
+
+    this.characters.forEach((char) => {
+      const posX = char.x * tileSize + offsetX + tileSize / 2;
+      const posY = char.y * tileSize + offsetY + tileSize / 2;
+      char.visual = this.add
+        .sprite(posX, posY, char.spriteKey)
+        .setOrigin(0.5)
+        .setScale(0.5)
+        .setAngle(char.angle);
+    });
   }
-}
-
-
-
-initializeCharacters() {
-  const tileSize = 512;
-  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
-  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
-
-  this.characters = [
-    {
-      name: "Aveugle",
-      spriteKey: "aveugleSprite",
-      x: 0,
-      y: 7,
-      angle: 90, // Direction initiale (vers le bas)
-      actions: [
-        { name: "Pierre Résonnante", icon: "pierreIcon" },
-        { name: "Canne Chercheuse", icon: "canneIcon" },
-      ],
-      ult: { name: "Gourde énergisante", icon: "healIcon" },
-      ultReady: false,
-      hp: 6,
-      u: 0,
-    },
-    {
-      name: "Musicien",
-      spriteKey: "musicienSprite",
-      x: 3,
-      y: 7,
-      angle: 90, // Direction initiale (vers le bas)
-      actions: [
-        { name: "La musique dans la peau", icon: "musicIcon" },
-        { name: "Rythme endiablé", icon: "rythmIcon" },
-      ],
-      ult: { name: "Douce mélodie", icon: "melodyIcon" },
-      ultReady: false,
-      hp: 4,
-      u: 0,
-    },
-    {
-      name: "Enregistreur",
-      spriteKey: "enregistreurSprite",
-      x: 7,
-      y: 7,
-      angle: 90, // Direction initiale (vers le bas)
-      actions: [
-        { name: "Record", icon: "recordIcon" },
-        { name: "Soundboard", icon: "soundboardIcon" },
-      ],
-      ult: { name: "Rewind", icon: "rewindIcon" },
-      ultReady: false,
-      hp: 5,
-      u: 0,
-    },
-  ];
-
-  this.characters.forEach((char) => {
-    const posX = char.x * tileSize + offsetX + tileSize / 2;
-    const posY = char.y * tileSize + offsetY + tileSize / 2;
-    char.visual = this.add
-      .sprite(posX, posY, char.spriteKey)
-      .setOrigin(0.5)
-      .setScale(0.5)
-      .setAngle(char.angle);
-  });
-}
-
 
   // Enemies Initialization
   initializeEnemies() {
@@ -245,31 +251,53 @@ initializeCharacters() {
       (this.cameras.main.height - this.grid.length * tileSize) / 2;
 
     this.enemies = [
-      { name: "Ennemi 1", color: 0xff8800, x: 2, y: 0, hp: 3, debuff: false },
-      { name: "Ennemi 2", color: 0x8800ff, x: 5, y: 0, hp: 3, debuff: false },
-      { name: "Ennemi 2", color: 0x8877ff, x: 5, y: 0, hp: 3, debuff: false },
+      {
+        name: "Ennemi 1",
+        x: 2,
+        y: 0,
+        hp: 3,
+        debuff: false,
+        spriteKey: "gramophoneSprite",
+      },
+      {
+        name: "Ennemi 2",
+
+        x: 5,
+        y: 0,
+        hp: 4,
+        debuff: false,
+        spriteKey: "megaphoneSprite",
+      },
+      {
+        name: "Ennemi 3",
+        color: 0x8877ff,
+        x: 5,
+        y: 0,
+        hp: 5,
+        debuff: false,
+        spriteKey: "enregistreurSprite",
+      },
     ];
 
     this.enemies.forEach((enemy) => {
       const posX = enemy.x * tileSize + offsetX + tileSize / 2;
       const posY = enemy.y * tileSize + offsetY + tileSize / 2;
       enemy.visual = this.add
-        .rectangle(posX, posY, tileSize / 2, tileSize / 2, enemy.color)
+        .sprite(posX, posY, enemy.spriteKey)
+        .setScale(0.3)
         .setOrigin(0.5, 0.5);
     });
   }
-
 
   highlightMovableTiles(character) {
     this.grid.forEach((column, x) =>
       column.forEach((tile, y) => {
         tile.clearTint(); // Réinitialise toutes les teintes
-        console.log(`Case (${x}, ${y}) réinitialisée.`);
       })
     );
-  
+
     if (!character) return;
-  
+
     const { x, y } = character;
     const possibleMoves = [
       { dx: 0, dy: 1 },
@@ -277,11 +305,11 @@ initializeCharacters() {
       { dx: 1, dy: 0 },
       { dx: -1, dy: 0 },
     ];
-  
+
     possibleMoves.forEach(({ dx, dy }) => {
       const newX = x + dx;
       const newY = y + dy;
-  
+
       if (
         newX >= 0 &&
         newX < this.grid.length &&
@@ -290,25 +318,25 @@ initializeCharacters() {
         !this.grid[newX][newY].isObstacle
       ) {
         console.log(`Highlight case (${newX}, ${newY})`);
-        this.grid[newX][newY].setTint(0x00ff00); // Vert
+        this.grid[newX][newY].setTint(0x1652ff); // Vert
       }
     });
   }
 
   createUI() {
     this.uiContainer = this.add.container(0, 0);
-  
+
     // Texte du nom du personnage
     this.characterNameText = this.add.text(-3000, -700, "", {
       fontSize: "150px",
       fill: "#fff",
     });
     this.uiContainer.add(this.characterNameText);
-  
+
     // Image du personnage actif (initialisée à null)
     this.activeCharacterIcon = this.add.image(-2500, -1300, null).setScale(2);
     this.uiContainer.add(this.activeCharacterIcon);
-  
+
     // Bouton "Fin de tour"
     this.endTurnButtonIcon = this.add
       .image(4000, 2000, "endTurnIcon")
@@ -317,25 +345,30 @@ initializeCharacters() {
       .on("pointerdown", () => this.endPlayerTurn());
     this.uiContainer.add(this.endTurnButtonIcon);
   }
-  
 
-  
   updateUI() {
+    if (this.characters.length === 0 || this.enemies.length === 0) {
+      this.checkEndConditions();
+      return; // Arrête la mise à jour de l'interface
+    }
+
     const activeCharacter = this.characters[this.activeCharacterIndex];
-  
-    // Mettre à jour le texte du nom du personnage
+
+    // Vérifie si l'activeCharacter existe encore
+    if (!activeCharacter) {
+      console.log("Aucun personnage actif !");
+      return;
+    }
+    this.checkEndConditions(); // Mettre à jour le texte du nom du personnage
     this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
-  
+
     // Mettre à jour l'icône du personnage actif
-    this.activeCharacterIcon.setTexture(
-      activeCharacter.name.toLowerCase()
-    );
-  
-    // Supprimer les anciens boutons d'action
+    this.activeCharacterIcon.setTexture(activeCharacter.name.toLowerCase());
+
     this.uiContainer.list
       .filter((child) => child.isActionButton)
       .forEach((button) => button.destroy());
-  
+
     // Créer de nouveaux boutons d'action
     activeCharacter.actions.forEach((action, index) => {
       this.createActionButton(action, index + 1);
@@ -353,23 +386,75 @@ initializeCharacters() {
       this.highlightMovableTiles(activeCharacter);
     } else {
       // Réinitialiser les surbrillances
-      this.grid.forEach((column) =>
-        column.forEach((tile) => tile.clearTint())
-      );
+      this.grid.forEach((column) => column.forEach((tile) => tile.clearTint()));
     }
-  
+
     // Créer le bouton de l'ultime si nécessaire
     if (activeCharacter.u === 3) {
       activeCharacter.ultReady = true;
     }
-  
+
     this.createActionButton(activeCharacter.ult, 3, activeCharacter.ultReady);
+  }
+
+  checkEndConditions() {
+    // Supprime les personnages ou ennemis morts
+    this.characters = this.characters.filter((character) => {
+      if (character.hp <= 0) {
+        console.log(`${character.name} est mort et disparaît du plateau.`);
+        character.visual.destroy(); // Supprime l'affichage du personnage
+        return false; // Retire le personnage de la liste
+      }
+      return true;
+    });
+
+    this.enemies = this.enemies.filter((enemy) => {
+      if (enemy.hp <= 0) {
+        console.log(`${enemy.name} est mort et disparaît du plateau.`);
+        enemy.visual.destroy(); // Supprime l'affichage de l'ennemi
+        return false; // Retire l'ennemi de la liste
+      }
+      return true;
+    });
+
+    // Conditions de victoire ou de défaite
+    if (this.characters.length === 0) {
+      console.log("Défaite ! Tous les personnages sont morts.");
+      this.showEndScreen(false); // Affiche un écran de défaite
+    } else if (this.enemies.length === 0) {
+      console.log("Victoire ! Tous les ennemis ont été vaincus.");
+      this.showEndScreen(true); // Affiche un écran de victoire
+    }
+  }
+
+  showEndScreen(victory) {
+    const text = victory ? "Victoire !" : "Défaite !";
+    const color = victory ? "#00ff00" : "#ff0000";
+
+    // Affiche un texte au centre de l'écran
+    const endText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+      text,
+      {
+        fontSize: "128px",
+        color: color,
+      }
+    );
+    endText.setOrigin(0.5);
+
+    // Désactive toutes les interactions
+    this.input.enabled = false;
+
+    // Redémarre la scène après quelques secondes
+    this.time.delayedCall(3000, () => {
+      this.scene.restart();
+    });
   }
 
   restrictVisionToCharacter(character) {
     // Cache toutes les cases
     this.grid.flat().forEach((tile) => {
-      console.log(tile)
       tile.setTint(0x000000); // Noir pour cacher
     });
 
@@ -452,13 +537,21 @@ initializeCharacters() {
     const offsetX = -3000; // Garder l'alignement à gauche
     const offsetY = 0 + actionIndex * 800; // Espacement entre les boutons
     const backgroundColor = actionIndex === 3 && !ready ? "#ff0000" : "#444";
-  
+
     // Ajout de l'image d'action
     const actionImage = this.add
       .image(offsetX + 500, offsetY - 300, action.icon) // Positionner l'image
       .setScale(2)
-      .setOrigin(0.5);
-  
+      .setOrigin(0.5)
+      .setInteractive()
+      .on("pointerdown", () => {
+        if (actionIndex === 3 && !ready) {
+          console.log("Ultime non disponible !");
+        } else {
+          this.handleAction(actionIndex);
+        }
+      });
+
     // Ajout du bouton texte
     const button = this.add
       .text(offsetX, offsetY, action.name, {
@@ -475,10 +568,10 @@ initializeCharacters() {
           this.handleAction(actionIndex);
         }
       });
-  
+
     button.isActionButton = true;
     actionImage.isActionButton = true;
-  
+
     this.uiContainer.add(actionImage);
     this.uiContainer.add(button);
   }
@@ -491,11 +584,14 @@ initializeCharacters() {
         case "Aveugle":
           if (actionIndex === 1) {
             this.performLineAttack(activeCharacter);
+            activeCharacter.act = true;
           } else if (actionIndex === 2) {
             this.performCrossAttack(activeCharacter);
+            activeCharacter.act = true;
           } else if (actionIndex === 3) {
             if (activeCharacter.ultReady) {
               this.performHeal(activeCharacter);
+              activeCharacter.act = true;
               activeCharacter.ultReady = false; // Réinitialise l'ultime après utilisation
             } else {
               console.log("Ultime non disponible !");
@@ -535,7 +631,6 @@ initializeCharacters() {
       }
     }
     // Marque que le joueur a effectué une action
-    activeCharacter.act = true;
   }
   performLineAttack(character) {
     console.log(`${character.name} effectue une attaque en ligne.`);
@@ -581,9 +676,7 @@ initializeCharacters() {
         console.log(
           `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
         );
-        tile.setTint(
-          (targetX + targetY + 3) % 2 === 0 ? 0xffffff : 0xff8851
-        ); // Révèle la case
+        tile.setTint((targetX + targetY + 3) % 2 === 0 ? 0xffffff : 0xff8851); // Révèle la case
         tilesRevealed.push(tile);
         break;
       }
@@ -857,18 +950,21 @@ initializeCharacters() {
       .filter((child) => child.isActionButton)
       .forEach((button) => button.destroy());
   }
-
   freeMove(character) {
     console.log("Déplacement libre activé.");
 
-    // Permet de cliquer sur une case dans les axes horizontaux et verticaux
-    const validTiles = this.grid.flat().filter(
-      (tile) => tile.gridX === character.x || tile.gridY === character.y // Même ligne ou même colonne
-    );
+    // Récupère toutes les cases valides pour le mouvement (même ligne ou colonne)
+    const validTiles = this.grid
+      .flat()
+      .filter(
+        (tile) => tile.gridX === character.x || tile.gridY === character.y
+      );
 
+    // Ajoute des interactivités aux cases valides
     validTiles.forEach((tile) => {
       tile.setTint(0x87cefa); // Surligne les cases valides
       tile.setInteractive().on("pointerdown", () => {
+        // Déplace le personnage vers la nouvelle case
         character.x = tile.gridX;
         character.y = tile.gridY;
 
@@ -879,8 +975,13 @@ initializeCharacters() {
         character.visual.x = tile.gridX * 512 + offsetX + 256;
         character.visual.y = tile.gridY * 512 + offsetY + 256;
 
-        this.clearTileHighlights(); // Supprime les surlignages
-        this.grid.flat().forEach((tile) => tile.removeInteractive()); // Désactive les clics
+        // Nettoie uniquement les cases valides après le déplacement
+        validTiles.forEach((tile) => {
+          tile.clearTint();
+          tile.removeInteractive();
+        });
+
+        this.playerHasMoved = true;
         console.log("Déplacement terminé !");
       });
     });
@@ -1016,11 +1117,8 @@ initializeCharacters() {
     if (activeCharacter.u < 3) activeCharacter.u++;
 
     // Réinitialiser les surbrillances
-    this.grid.forEach((column) =>
-      column.forEach((tile) => tile.clearTint())
-    );
+    this.grid.forEach((column) => column.forEach((tile) => tile.clearTint()));
 
-    activeCharacter.act = false;
     this.startEnemyTurn();
   }
 
@@ -1055,9 +1153,7 @@ initializeCharacters() {
       this.nextPlayerTurn();
     });
   }
-
   enemyMove(enemy, callback) {
-    // Trouve le personnage cible le plus proche
     const target = this.characters.reduce(
       (closest, char) => {
         const distance =
@@ -1121,16 +1217,6 @@ initializeCharacters() {
               otherEnemy.y === newY
           )
         ) {
-          enemy.x = newX;
-          enemy.y = newY;
-
-          const offsetX =
-            (this.cameras.main.width - this.grid[0].length * 512) / 2;
-          const offsetY =
-            (this.cameras.main.height - this.grid.length * 512) / 2;
-
-          enemy.visual.x = enemy.x * 512 + offsetX + 256;
-          enemy.visual.y = enemy.y * 512 + offsetY + 256;
           distanceMatrix[newX][newY] = current.distance + 1;
           queue.push({ x: newX, y: newY, distance: current.distance + 1 });
         }
@@ -1163,14 +1249,203 @@ initializeCharacters() {
       enemy.x = bestMove.x;
       enemy.y = bestMove.y;
 
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
+      const tileSize = 512; // Taille des tuiles : 512x512
+      const offsetX =
+        (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+      const offsetY =
+        (this.cameras.main.height - this.grid.length * tileSize) / 2;
 
-      enemy.visual.x = enemy.x * 512 + offsetX + 256;
-      enemy.visual.y = enemy.y * 512 + offsetY + 256;
+      enemy.visual.x = enemy.x * tileSize + offsetX + tileSize / 2;
+      enemy.visual.y = enemy.y * tileSize + offsetY + tileSize / 2;
+    } else {
+      console.log("Aucun mouvement optimal trouvé pour cet ennemi.");
+    }
+    this.performEnemyAttack(enemy);
+    if (enemy.name === "Ennemi 2") {
+      // Vérifie s'il y a des cibles pour l'attaque spéciale
+      this.enemyAttack2(enemy);
+      this.time.delayedCall(500, callback); // Délai avant la fin du tour
+      return;
+    }
+
+    if (enemy.name === "Ennemi 3") {
+      // Effectue une attaque combinée
+      this.enemyAttackCombined(enemy);
+      this.time.delayedCall(500, callback); // Ajoute un délai avant la fin du tour
+      return;
     }
 
     this.time.delayedCall(500, callback);
+  }
+
+  performEnemyAttack(enemy) {
+    const directions = [
+      { x: 0, y: -1 }, // Haut
+      { x: 0, y: 1 }, // Bas
+      { x: -1, y: 0 }, // Gauche
+      { x: 1, y: 0 }, // Droite
+    ];
+
+    directions.forEach((dir) => {
+      const targetX = enemy.x + dir.x;
+      const targetY = enemy.y + dir.y;
+
+      const targetCharacter = this.characters.find(
+        (char) => char.x === targetX && char.y === targetY
+      );
+
+      if (targetCharacter) {
+        targetCharacter.hp -= 1; // Inflige 1 dégât
+        console.log(
+          `${enemy.name} attaque ${targetCharacter.name}. HP restant : ${targetCharacter.hp}`
+        );
+
+        if (targetCharacter.hp <= 0) {
+          console.log(`${targetCharacter.name} est éliminé !`);
+          targetCharacter.visual.destroy(); // Supprime le visuel
+          this.characters = this.characters.filter(
+            (char) => char !== targetCharacter
+          ); // Retire le personnage de la liste
+        }
+      }
+    });
+  }
+  enemyAttack2(enemy) {
+    console.log(`${enemy.name} prépare une attaque.`);
+
+    // Les directions possibles (haut, bas, gauche, droite)
+    const directions = [
+      { x: 0, y: -1 }, // Haut
+      { x: 0, y: 1 }, // Bas
+      { x: -1, y: 0 }, // Gauche
+      { x: 1, y: 0 }, // Droite
+    ];
+
+    // Vérifie chaque direction pour trouver une cible
+    for (const dir of directions) {
+      let damageDealt = false;
+
+      for (let i = 1; i <= 3; i++) {
+        // Jusqu'à 3 cases de loin
+        const targetX = enemy.x + dir.x * i;
+        const targetY = enemy.y + dir.y * i;
+
+        // Vérifie si la case est valide
+        if (
+          targetX >= 0 &&
+          targetX < this.grid.length &&
+          targetY >= 0 &&
+          targetY < this.grid[0].length
+        ) {
+          // Vérifie si un personnage est sur cette case
+          const targetCharacter = this.characters.find(
+            (char) => char.x === targetX && char.y === targetY
+          );
+
+          if (targetCharacter) {
+            targetCharacter.hp -= 2; // Inflige 2 dégâts
+            console.log(
+              `${enemy.name} inflige 2 dégâts à ${targetCharacter.name}. PV restants : ${targetCharacter.hp}`
+            );
+
+            damageDealt = true;
+            break; // Arrête de vérifier plus loin dans cette direction
+          }
+
+          // Si la case est un obstacle, arrête la recherche dans cette direction
+          if (this.grid[targetX][targetY].isObstacle) {
+            break;
+          }
+        }
+      }
+
+      if (damageDealt) {
+        return; // Si des dégâts ont été infligés, termine l'attaque
+      }
+    }
+
+    console.log(`${enemy.name} n'a trouvé aucune cible à attaquer.`);
+  }
+
+  enemyAttackCombined(enemy) {
+    console.log(`${enemy.name} prépare une attaque combinée.`);
+
+    // Étape 1 : Inflige 1 dégât sur les 4 cases autour de lui
+    const adjacentDirections = [
+      { x: 0, y: -1 }, // Haut
+      { x: 0, y: 1 }, // Bas
+      { x: -1, y: 0 }, // Gauche
+      { x: 1, y: 0 }, // Droite
+    ];
+
+    adjacentDirections.forEach((dir) => {
+      const targetX = enemy.x + dir.x;
+      const targetY = enemy.y + dir.y;
+
+      if (
+        targetX >= 0 &&
+        targetX < this.grid.length &&
+        targetY >= 0 &&
+        targetY < this.grid[0].length
+      ) {
+        const targetCharacter = this.characters.find(
+          (char) => char.x === targetX && char.y === targetY
+        );
+
+        if (targetCharacter) {
+          targetCharacter.hp -= 1; // Inflige 1 dégât
+          console.log(
+            `${enemy.name} inflige 1 dégât à ${targetCharacter.name}. PV restants : ${targetCharacter.hp}`
+          );
+        }
+      }
+    });
+
+    // Étape 2 : Inflige 2 dégâts jusqu'à 3 cases dans une direction
+    const directions = [
+      { x: 0, y: -1 }, // Haut
+      { x: 0, y: 1 }, // Bas
+      { x: -1, y: 0 }, // Gauche
+      { x: 1, y: 0 }, // Droite
+    ];
+
+    for (const dir of directions) {
+      let damageDealt = false;
+
+      for (let i = 1; i <= 3; i++) {
+        const targetX = enemy.x + dir.x * i;
+        const targetY = enemy.y + dir.y * i;
+
+        if (
+          targetX >= 0 &&
+          targetX < this.grid.length &&
+          targetY >= 0 &&
+          targetY < this.grid[0].length
+        ) {
+          const targetCharacter = this.characters.find(
+            (char) => char.x === targetX && char.y === targetY
+          );
+
+          if (targetCharacter) {
+            targetCharacter.hp -= 2; // Inflige 2 dégâts
+            console.log(
+              `${enemy.name} inflige 2 dégâts à ${targetCharacter.name}. PV restants : ${targetCharacter.hp}`
+            );
+
+            damageDealt = true;
+            break; // Arrête après avoir infligé des dégâts
+          }
+
+          if (this.grid[targetX][targetY].isObstacle) {
+            break; // Arrête si un obstacle est rencontré
+          }
+        }
+      }
+
+      if (damageDealt) {
+        return; // Terminer l'attaque après avoir infligé des dégâts dans une direction
+      }
+    }
   }
 
   nextPlayerTurn() {
@@ -1185,7 +1460,7 @@ initializeCharacters() {
 
   handleTileClick(tile) {
     if (this.isEnemyTurn || this.playerHasMoved) return;
-  
+
     const activeCharacter = this.characters[this.activeCharacterIndex];
 
     // Vérifie si le personnage actif est l'enregistreur
@@ -1197,7 +1472,7 @@ initializeCharacters() {
     const distance =
       Math.abs(tile.gridX - activeCharacter.x) +
       Math.abs(tile.gridY - activeCharacter.y);
-  
+
     if (
       distance === 1 &&
       !tile.isObstacle &&
@@ -1207,29 +1482,28 @@ initializeCharacters() {
     ) {
       const dx = tile.gridX - activeCharacter.x;
       const dy = tile.gridY - activeCharacter.y;
-  
+
       // Ajuste la position
       activeCharacter.x = tile.gridX;
       activeCharacter.y = tile.gridY;
-  
+
       // Définit l'angle en fonction de la direction
       if (dx === 1) activeCharacter.visual.setAngle(90); // Droite
       else if (dx === -1) activeCharacter.visual.setAngle(270); // Gauche
       else if (dy === 1) activeCharacter.visual.setAngle(180); // Bas
       else if (dy === -1) activeCharacter.visual.setAngle(0); // Haut
-  
+
       const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
       const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
-  
+
       activeCharacter.visual.x = tile.gridX * 512 + offsetX + 256;
       activeCharacter.visual.y = tile.gridY * 512 + offsetY + 256;
-  
+
       this.playerHasMoved = true;
-  
+
       this.updateUI();
     }
   }
-  
 
   getCurrentEntity() {
     return this.characters[this.activeCharacterIndex];
