@@ -72,6 +72,26 @@ export default class loading {
 
     this.load.image("portrait", "./assets/ui/portrait.png");
 
+    this.load.image("tuto_move", "./assets/images/tuto_case.png"); // Image pour expliquer le déplacement
+    this.load.image("tuto_action", "./assets/images/tuto_comp.png"); // Image pour expliquer les actions
+    this.load.image("tuto_aveugle", "./assets/images/tuto_aveugle.png"); // Image pour l'Aveugle
+    this.load.image("tuto_musicien", "./assets/images/tuto_musicien.png"); // Image pour le Musicien
+    this.load.image(
+      "tuto_enregistreur",
+      "./assets/images/tuto_enregistreur.png"
+    ); // Image pour l'Enregistreur
+    this.load.image("tuto_ulti", "./assets/images/tuto_ulti.png"); // Image pour l'ulti
+
+    this.load.image(
+      "card_echange",
+      "./assets/images/enregistreur_skill_echange.png"
+    ); // Image pour expliquer les actions
+    this.load.image("card_att", "./assets/images/enregistreur_skill_degat.png"); // Image pour l'Aveugle
+    this.load.image(
+      "card_move",
+      "./assets/images/enregistreur_skill_deplace.png"
+    );
+
     this.load.audio("ecran_titre", "./assets/musique/ecran_titre.mp3");
     this.load.audio("combat", "./assets/musique/combat.mp3");
     this.load.audio("boss", "./assets/musique/boss.mp3");
@@ -110,6 +130,6 @@ export default class loading {
     this.scene.add("combat", combat, false);
     this.scene.add("MainMenu", acceuil, false);
     this.scene.add("story", story, false);
-    this.scene.start("combat");
+    this.scene.start("MainMenu");
   }
 }

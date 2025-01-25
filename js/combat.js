@@ -7,6 +7,7 @@ export default class Combat extends Phaser.Scene {
     this.enemyTurnIndex = 0; // Indice pour gérer le tour des ennemis individuellement
     this.playerHasMoved = false; // Suivi du déplacement du joueur par tour
     this.patient = false;
+    this.tuto = true;
     this.stateStack = [];
   }
 
@@ -17,16 +18,89 @@ export default class Combat extends Phaser.Scene {
 
   // Phaser create method
   create() {
-    this.background = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0000ff)
-      .setOrigin(0, 0);
+    this.fond = this.add.image(0, 0, "portrait").setOrigin(1.75, 1).setScale(5);
 
+    this.tutorialContainer = this.add.container(this.scale.width - 300, 50);
+
+    // Créer les images du tutoriel (mais les rendre invisibles au départ)
+    this.tutoImages = {
+      move: this.add
+        .image(0, 0, "tuto_move")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+      action: this.add
+        .image(0, 0, "tuto_action")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+      aveugle: this.add
+        .image(0, 0, "tuto_aveugle")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+      musicien: this.add
+        .image(0, 0, "tuto_musicien")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+      enregistreur: this.add
+        .image(0, 0, "tuto_enregistreur")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+      ulti: this.add
+        .image(0, 0, "tuto_ulti")
+        .setOrigin(-1.2, 0)
+        .setScale(1.3)
+        .setVisible(false),
+    };
+
+    // Ajouter les images au conteneur
+    Object.values(this.tutoImages).forEach((image) =>
+      this.tutorialContainer.add(image)
+    );
+
+    // Afficher la première image
+    this.showTutorial("move");
     this.initializeGrid();
     this.createObstacles();
     this.initializeCharacters();
     this.initializeEnemies();
     this.createUI();
     this.updateUI();
+  }
+
+  showTutorial(key) {
+    // Masquer toutes les images
+    Object.values(this.tutoImages).forEach((image) => image.setVisible(false));
+
+    // Afficher l'image correspondante
+    if (this.tutoImages[key]) {
+      this.tutoImages[key].setVisible(true);
+    }
+  }
+
+  checkTutorialProgress() {
+    if (!this.tuto) return;
+    const activeCharacter = this.characters[this.activeCharacterIndex];
+
+    switch (activeCharacter.name) {
+      case "Aveugle":
+        this.showTutorial("aveugle");
+        break;
+      case "Musicien":
+        this.showTutorial("musicien");
+        break;
+      case "Enregistreur":
+        this.showTutorial("enregistreur");
+        break;
+    }
+
+    // Si on est au quatrième tour, afficher l'image pour l'ulti
+    if (this.turnIndex === 4) {
+      this.showTutorial("ulti");
+    }
   }
 
   initializeGrid() {
@@ -283,11 +357,11 @@ export default class Combat extends Phaser.Scene {
       {
         name: "Ennemi 3",
         color: 0x8877ff,
-        x: 5,
+        x: 3,
         y: 0,
         hp: 5,
         debuff: false,
-        spriteKey: "enregistreurSprite",
+        spriteKey: "megaphoneSprite",
       },
     ];
 
@@ -364,7 +438,6 @@ export default class Combat extends Phaser.Scene {
       return;
     }
     this.checkEndConditions(); // Mettre à jour le texte du nom du personnage
-    this.fond = this.add.image(0, 0, "portrait").setOrigin(1.7, 1).setScale(5);
 
     this.portrait = this.activeCharacterIcon.setTexture(
       activeCharacter.name.toLowerCase()
@@ -772,12 +845,10 @@ export default class Combat extends Phaser.Scene {
 
     const resetGridAndTargets = () => {
       this.grid.flat().forEach((tile) => {
-        const baseColor =
-          (tile.gridX + tile.gridY) % 2 === 0 ? 0xffffff : 0x5fffff;
-        tile.setTint(baseColor); // Restaure les couleurs du plateau
+        tile.clearTint(); // Restaure les couleurs du plateau
       });
       this.obstacles.forEach((obstacle) => {
-        obstacle.setTint(0xff00ff); // Restaure la couleur des obstacles
+        obstacle.clearTint(); // Restaure la couleur des obstacles
       });
       this.characters.forEach((char) => {
         char.visual.setAlpha(1); // Réinitialise l'opacité des personnages
@@ -823,13 +894,11 @@ export default class Combat extends Phaser.Scene {
 
           if (isAlly) {
             target.buff = { atkBoost: 1 };
-            this.sound.play("musique_peau");
             console.log(
               `${target.name} reçoit un buff de +1 ATK pour son prochain coup.`
             );
           } else {
             target.debuff = { cannotMove: true };
-            this.sound.play("musique_peau");
             console.log(
               `${target.name} ne peut pas bouger pendant son prochain tour.`
             );
@@ -851,12 +920,17 @@ export default class Combat extends Phaser.Scene {
         `QTE ${qteIndex + 1}: Appuyez sur '${targetLetter}' rapidement !`
       );
 
-      const qteText = this.add.text(200, 200, `Appuyez sur '${targetLetter}'`, {
-        fontSize: "32px",
-        color: "#ffffff",
-        backgroundColor: "#000000",
-        padding: { x: 10, y: 10 },
-      });
+      const qteText = this.add.text(
+        3000,
+        -1500,
+        `Appuyez sur '${targetLetter}'`,
+        {
+          fontSize: "200px",
+          color: "#ffffff",
+          backgroundColor: "#000000",
+          padding: { x: 10, y: 10 },
+        }
+      );
 
       let qteSuccess = false;
       const qteTimer = this.time.delayedCall(1500, () => {
@@ -920,38 +994,43 @@ export default class Combat extends Phaser.Scene {
       {
         name: "Déplacement libre",
         action: this.freeMove.bind(this, character),
+        imageKey: "card_move", // Clé de l'image pour l'option
       },
       {
         name: "3 Dégâts autour",
         action: this.areaDamage.bind(this, character),
+        imageKey: "card_att", // Clé de l'image pour l'option
       },
       {
         name: "Échanger de place",
         action: this.switchPosition.bind(this, character),
+        imageKey: "card_echange", // Clé de l'image pour l'option
       },
     ];
 
-    options.forEach((option, index) => {
-      const offsetX = 200;
-      const offsetY = 150 + index * 50;
+    // Calcul des positions pour centrer les images
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+    const imageSpacing = 1600; // Espacement entre les images
 
-      const button = this.add
-        .text(offsetX, offsetY, option.name, {
-          fontSize: "16px",
-          fill: "#fff",
-          backgroundColor: "#444",
-          padding: { x: 10, y: 5 },
-        })
+    options.forEach((option, index) => {
+      const posX = centerX + (index - 1) * imageSpacing; // Positionne les images horizontalement au centre
+      const posY = centerY;
+
+      // Ajoute l'image interactive pour l'option
+      const optionImage = this.add
+        .image(posX, posY, option.imageKey) // Utilise la clé de l'image
+        .setScale(2) // Ajuste l'échelle de l'image
         .setInteractive()
         .on("pointerdown", () => {
           console.log(`Option choisie : ${option.name}`);
-          option.action();
-          this.clearActionButtons(); // Nettoie les boutons après choix
+          option.action(); // Exécute l'action associée
+          this.clearActionButtons(); // Nettoie les images après choix
           this.updateUI(); // Met à jour l'interface
         });
 
-      button.isActionButton = true;
-      this.uiContainer.add(button);
+      optionImage.isActionButton = true;
+      this.uiContainer.add(optionImage);
     });
   }
 
@@ -1136,6 +1215,12 @@ export default class Combat extends Phaser.Scene {
 
     // Réinitialiser les surbrillances
     this.grid.forEach((column) => column.forEach((tile) => tile.clearTint()));
+
+    if (this.tutoImages.move.visible) {
+      this.showTutorial("action"); // Passer au tutoriel suivant
+    } else if (this.tutoImages.action.visible) {
+      this.showTutorial(null); // Masquer les tutoriels
+    }
 
     this.startEnemyTurn();
   }
@@ -1470,9 +1555,14 @@ export default class Combat extends Phaser.Scene {
     this.activeCharacterIndex =
       (this.activeCharacterIndex + 1) % this.characters.length;
     if (this.activeCharacterIndex === 0) {
-      // Sauvegarde l'état après que tous les personnages ont joué
+      this.tuto = false;
+      Object.values(this.tutoImages).forEach((image) =>
+        image.setVisible(false)
+      );
       this.saveGameState();
     }
+
+    this.checkTutorialProgress();
     this.updateUI();
   }
 
@@ -1520,6 +1610,9 @@ export default class Combat extends Phaser.Scene {
       this.playerHasMoved = true;
 
       this.updateUI();
+      if (this.tutoImages.move.visible) {
+        this.showTutorial("action"); // Passer au tutoriel suivant
+      }
     }
   }
 
