@@ -578,6 +578,7 @@ initializeCharacters() {
           (en) => en.x === targetX && en.y === targetY
         );
         enemy.hp -= 1;
+        this.sound.play('pierre_resonante');
         console.log(
           `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
         );
@@ -630,6 +631,7 @@ initializeCharacters() {
           console.log(
             `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
           );
+          this.sound.play('canne');
         }
 
         // Révèle la case en couleur
@@ -645,10 +647,12 @@ initializeCharacters() {
     this.characters.forEach((char) => {
       char.hp += 2; // Réinitialise l'opacité des personnages
     });
+    this.sound.play('gourde');
   }
 
   performRhythmAttack(character) {
     // Logique pour l'attaque rythmée
+    this.sound.play('rythme');
   }
 
   performBuffOrDebuff(character) {
@@ -721,11 +725,13 @@ initializeCharacters() {
 
           if (isAlly) {
             target.buff = { atkBoost: 1 };
+            this.sound.play('musique_peau');
             console.log(
               `${target.name} reçoit un buff de +1 ATK pour son prochain coup.`
             );
           } else {
             target.debuff = { cannotMove: true };
+            this.sound.play('musique_peau');
             console.log(
               `${target.name} ne peut pas bouger pendant son prochain tour.`
             );
@@ -784,10 +790,13 @@ initializeCharacters() {
   performCharm(character) {
     const activeCharacter = this.getCurrentEntity();
     activeCharacter.u = 0;
+    this.sound.play('charme');
   }
 
   recordAction(character) {
     console.log(`${character.name} patiente ce tour.`);
+
+    this.sound.play('record');
 
     // Désactive les actions et les déplacements pour ce tour
     this.playerHasMoved = true;
@@ -802,6 +811,7 @@ initializeCharacters() {
   playRecordedAction(character) {
     if (!this.patient) return;
     this.patient = false;
+    this.sound.play('soundboard');
     console.log(`${character.name} utilise sa prochaine action.`);
 
     // Diminue légèrement l'opacité des autres personnages et ennemis pour indiquer un focus
@@ -910,6 +920,7 @@ initializeCharacters() {
 
       if (enemy) {
         enemy.hp -= 3; // Inflige 3 dégâts
+        this.sound.play('rocker_atk1');
         console.log(`${enemy.name} touché ! HP restant : ${enemy.hp}`);
       }
     });
@@ -942,6 +953,7 @@ initializeCharacters() {
           character.visual.y = character.y * 512 + offsetY + 256;
           ally.visual.x = ally.x * 512 + offsetX + 256;
           ally.visual.y = ally.y * 512 + offsetY + 256;
+          this.sound.play('gourde');
 
           // Désactive les clics et nettoie
           this.characters.forEach((char) => char.visual.removeInteractive());
@@ -951,6 +963,7 @@ initializeCharacters() {
   }
 
   performRewind(character) {
+    this.sound.play('rewind');
     const activeCharacter = this.getCurrentEntity();
     activeCharacter.u = 0;
     this.restoreGameState();
