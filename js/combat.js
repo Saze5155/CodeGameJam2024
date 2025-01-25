@@ -25,35 +25,35 @@ export default class Combat extends Phaser.Scene {
     this.updateUI();
   }
 
-  // Grid Initialization
-  initializeGrid() {
-    const camera = this.cameras.main;
-    const gridWidth = 8;
-    const gridHeight = 8;
-    const tileSize = 64;
+initializeGrid() {
+  const camera = this.cameras.main;
+  const gridWidth = 8; // Nombre de colonnes
+  const gridHeight = 8; // Nombre de lignes
+  const tileSize = 512; // Taille de la tuile (largeur et hauteur)
 
-    const offsetX = (camera.width - gridWidth * tileSize) / 2;
-    const offsetY = (camera.height - gridHeight * tileSize) / 2;
+  const offsetX = (camera.width - gridWidth * tileSize) / 2;
+  const offsetY = (camera.height - gridHeight * tileSize) / 2;
 
-    this.grid = [];
-    for (let x = 0; x < gridWidth; x++) {
-      this.grid[x] = [];
-      for (let y = 0; y < gridHeight; y++) {
-        const posX = x * tileSize + offsetX;
-        const posY = y * tileSize + offsetY;
-        const color = (x + y) % 2 === 0 ? 0xffffff : 0x5fffff;
-        const tile = this.add
-          .rectangle(posX, posY, tileSize, tileSize, color)
-          .setOrigin(0, 0)
-          .setInteractive();
+  this.grid = [];
+  for (let x = 0; x < gridWidth; x++) {
+    this.grid[x] = [];
+    for (let y = 0; y < gridHeight; y++) {
+      const posX = x * tileSize + offsetX;
+      const posY = y * tileSize + offsetY;
+      const tileKey = (x + y) % 2 === 0 ? 'whiteTile' : 'blackTile';
 
-        tile.gridX = x;
-        tile.gridY = y;
-        tile.on("pointerdown", () => this.handleTileClick(tile));
-        this.grid[x][y] = tile;
-      }
+      // Crée le sprite avec sa taille native (512x512)
+      const tile = this.add.sprite(posX + tileSize / 2, posY + tileSize / 2, tileKey).setOrigin(0.5);
+
+      tile.gridX = x;
+      tile.gridY = y;
+      tile.setInteractive();
+      tile.on("pointerdown", () => this.handleTileClick(tile));
+      this.grid[x][y] = tile;
     }
   }
+}
+  
   saveGameState() {
     const state = {
       characters: this.characters.map((char) => ({
@@ -85,96 +85,160 @@ export default class Combat extends Phaser.Scene {
     console.log("État sauvegardé :", state);
   }
 
-  // Obstacles Initialization
-  createObstacles() {
-    const obstaclePositions = [
-      { x: 4, y: 4 },
-      { x: 2, y: 3 },
-      { x: 5, y: 6 },
+// Dans la méthode createObstacles() :
+createObstacles() {
+  const tileSize = 512;
+  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
+  const camera = this.cameras.main;
+
+  // Ajustez le zoom (valeur inférieure à 1 pour dézoomer)
+  camera.setZoom(0.2);
+
+  const minObstacles = 5;
+  const maxObstacles = 8;
+  const totalObstacles = Phaser.Math.Between(minObstacles, maxObstacles);
+
+  this.obstacles = [];
+
+  // Fonction pour vérifier si une position est valide
+  const isValidPosition = (x, y) => {
+    // Pas sur les deux premières et deux dernières lignes
+    if (y < 2 || y > this.grid.length - 3) return false;
+
+    // Vérifie les positions adjacentes
+    const adjacentOffsets = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
     ];
 
-    const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-    const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+    const adjacentObstacles = adjacentOffsets.reduce((count, offset) => {
+      const nx = x + offset.dx;
+      const ny = y + offset.dy;
+      return (
+        count +
+        (this.grid[nx] && this.grid[nx][ny] && this.grid[nx][ny].isObstacle
+          ? 1
+          : 0)
+      );
+    }, 0);
 
-    this.obstacles = [];
-    obstaclePositions.forEach((pos) => {
-      if (this.grid[pos.x] && this.grid[pos.x][pos.y]) {
-        const posX = pos.x * 64 + offsetX;
-        const posY = pos.y * 64 + offsetY;
+    // Pas plus de 2 obstacles côte à côte
+    if (adjacentObstacles >= 3) return false;
 
-        const obstacle = this.add
-          .rectangle(posX, posY, 64, 64, 0xff00ff)
-          .setOrigin(0, 0);
+    return true;
+  };
 
-        obstacle.gridX = pos.x;
-        obstacle.gridY = pos.y;
-        obstacle.isObstacle = true;
-        this.obstacles.push(obstacle);
+  let attempts = 0;
+  while (this.obstacles.length < totalObstacles && attempts < 1000) {
+    const x = Phaser.Math.Between(0, this.grid.length - 1);
+    const y = Phaser.Math.Between(2, this.grid[0].length - 3); // Évite les deux premières et dernières lignes
 
-        this.grid[pos.x][pos.y].isObstacle = true;
-      }
-    });
+    // Vérifie si la position est valide
+    if (!this.grid[x][y].isObstacle && isValidPosition(x, y)) {
+      const posX = x * tileSize + offsetX + tileSize / 2;
+      const posY = y * tileSize + offsetY + tileSize / 2;
+
+      // Choisissez aléatoirement une image pour l'obstacle
+      const obstacleImage = Phaser.Math.Between(0, 1) === 0 ? 'bonkTile' : 'bonkTileCaisse';
+
+      // Créez un sprite d'obstacle avec l'image sélectionnée
+      const obstacle = this.add.sprite(posX, posY, obstacleImage).setOrigin(0.5);
+
+      // Facultatif : ajuster l'échelle pour correspondre à la taille de la tuile
+      obstacle.setDisplaySize(tileSize, tileSize);
+
+      obstacle.gridX = x;
+      obstacle.gridY = y;
+      obstacle.isObstacle = true;
+
+      this.obstacles.push(obstacle);
+
+      this.grid[x][y].isObstacle = true;
+    }
+
+    attempts++;
   }
 
-  // Characters Initialization
-  initializeCharacters() {
-    const tileSize = 64;
-    const offsetX =
-      (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
-    const offsetY =
-      (this.cameras.main.height - this.grid.length * tileSize) / 2;
-
-    this.characters = [
-      {
-        name: "Aveugle",
-        color: 0xff0000,
-        x: 0,
-        y: 7,
-        actions: ["Pierre Résonante", "Canne chercheuse"],
-        ult: "Gourde du brave",
-        ultReady: false,
-        hp: 6,
-        u: 0,
-        act: false,
-      },
-      {
-        name: "Musicien",
-        color: 0x00ff00,
-        x: 3,
-        y: 7,
-        actions: ["La musique dans la peau", "Rythme endiablé"],
-        ult: "Douce mélodie",
-        ultReady: false,
-        hp: 4,
-        u: 0,
-        act: false,
-      },
-      {
-        name: "Enregistreur",
-        color: 0x0000ff,
-        x: 7,
-        y: 7,
-        actions: ["Record", "Soundboard"],
-        ult: "Rewind",
-        ultReady: false,
-        hp: 5,
-        u: 0,
-        act: false,
-      },
-    ];
-
-    this.characters.forEach((char) => {
-      const posX = char.x * tileSize + offsetX + tileSize / 2;
-      const posY = char.y * tileSize + offsetY + tileSize / 2;
-      char.visual = this.add
-        .rectangle(posX, posY, tileSize / 2, tileSize / 2, char.color)
-        .setOrigin(0.5, 0.5);
-    });
+  if (this.obstacles.length < minObstacles) {
+    console.warn(
+      `Nombre insuffisant d'obstacles générés (${this.obstacles.length}). Réessayez.`
+    );
   }
+}
+
+
+
+initializeCharacters() {
+  const tileSize = 512;
+  const offsetX = (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
+  const offsetY = (this.cameras.main.height - this.grid.length * tileSize) / 2;
+
+  this.characters = [
+    {
+      name: "Aveugle",
+      spriteKey: "aveugleSprite",
+      x: 0,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "Pierre Résonnante", icon: "pierreIcon" },
+        { name: "Canne Chercheuse", icon: "canneIcon" },
+      ],
+      ult: { name: "Gourde énergisante", icon: "healIcon" },
+      ultReady: false,
+      hp: 6,
+      u: 0,
+    },
+    {
+      name: "Musicien",
+      spriteKey: "musicienSprite",
+      x: 3,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "La musique dans la peau", icon: "musicIcon" },
+        { name: "Rythme endiablé", icon: "rythmIcon" },
+      ],
+      ult: { name: "Douce mélodie", icon: "melodyIcon" },
+      ultReady: false,
+      hp: 4,
+      u: 0,
+    },
+    {
+      name: "Enregistreur",
+      spriteKey: "enregistreurSprite",
+      x: 7,
+      y: 7,
+      angle: 90, // Direction initiale (vers le bas)
+      actions: [
+        { name: "Record", icon: "recordIcon" },
+        { name: "Soundboard", icon: "soundboardIcon" },
+      ],
+      ult: { name: "Rewind", icon: "rewindIcon" },
+      ultReady: false,
+      hp: 5,
+      u: 0,
+    },
+  ];
+
+  this.characters.forEach((char) => {
+    const posX = char.x * tileSize + offsetX + tileSize / 2;
+    const posY = char.y * tileSize + offsetY + tileSize / 2;
+    char.visual = this.add
+      .sprite(posX, posY, char.spriteKey)
+      .setOrigin(0.5)
+      .setScale(0.5)
+      .setAngle(char.angle);
+  });
+}
+
 
   // Enemies Initialization
   initializeEnemies() {
-    const tileSize = 64;
+    const tileSize = 512;
     const offsetX =
       (this.cameras.main.width - this.grid[0].length * tileSize) / 2;
     const offsetY =
@@ -195,38 +259,84 @@ export default class Combat extends Phaser.Scene {
     });
   }
 
-  // UI Initialization
-  createUI() {
-    this.uiContainer = this.add.container(10, 10);
 
-    this.characterNameText = this.add.text(0, 0, "", {
-      fontSize: "16px",
+  highlightMovableTiles(character) {
+    this.grid.forEach((column, x) =>
+      column.forEach((tile, y) => {
+        tile.clearTint(); // Réinitialise toutes les teintes
+        console.log(`Case (${x}, ${y}) réinitialisée.`);
+      })
+    );
+  
+    if (!character) return;
+  
+    const { x, y } = character;
+    const possibleMoves = [
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+    ];
+  
+    possibleMoves.forEach(({ dx, dy }) => {
+      const newX = x + dx;
+      const newY = y + dy;
+  
+      if (
+        newX >= 0 &&
+        newX < this.grid.length &&
+        newY >= 0 &&
+        newY < this.grid[0].length &&
+        !this.grid[newX][newY].isObstacle
+      ) {
+        console.log(`Highlight case (${newX}, ${newY})`);
+        this.grid[newX][newY].setTint(0x00ff00); // Vert
+      }
+    });
+  }
+
+  createUI() {
+    this.uiContainer = this.add.container(0, 0);
+  
+    // Texte du nom du personnage
+    this.characterNameText = this.add.text(-3000, -700, "", {
+      fontSize: "150px",
       fill: "#fff",
     });
     this.uiContainer.add(this.characterNameText);
-
-    this.endTurnButton = this.add
-      .text(10, 60, "Fin de tour", {
-        fontSize: "14px",
-        fill: "#fff",
-        backgroundColor: "#444",
-      })
+  
+    // Image du personnage actif (initialisée à null)
+    this.activeCharacterIcon = this.add.image(-2500, -1300, null).setScale(2);
+    this.uiContainer.add(this.activeCharacterIcon);
+  
+    // Bouton "Fin de tour"
+    this.endTurnButtonIcon = this.add
+      .image(4000, 2000, "endTurnIcon")
+      .setScale(2)
       .setInteractive()
       .on("pointerdown", () => this.endPlayerTurn());
-
-    this.uiContainer.add(this.endTurnButton);
+    this.uiContainer.add(this.endTurnButtonIcon);
   }
+  
 
+  
   updateUI() {
     const activeCharacter = this.characters[this.activeCharacterIndex];
-
-    // Supprime uniquement les boutons d'action et d'ultime
+  
+    // Mettre à jour le texte du nom du personnage
+    this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
+  
+    // Mettre à jour l'icône du personnage actif
+    this.activeCharacterIcon.setTexture(
+      activeCharacter.name.toLowerCase()
+    );
+  
+    // Supprimer les anciens boutons d'action
     this.uiContainer.list
       .filter((child) => child.isActionButton)
       .forEach((button) => button.destroy());
-
-    this.characterNameText.setText(`Nom: ${activeCharacter.name}`);
-
+  
+    // Créer de nouveaux boutons d'action
     activeCharacter.actions.forEach((action, index) => {
       this.createActionButton(action, index + 1);
     });
@@ -242,14 +352,25 @@ export default class Combat extends Phaser.Scene {
     } else if (!this.playerHasMoved) {
       this.highlightMovableTiles(activeCharacter);
     } else {
-      this.clearTileHighlights();
+      // Réinitialiser les surbrillances
+      this.grid.forEach((column) =>
+        column.forEach((tile) => tile.clearTint())
+      );
     }
+  
+    // Créer le bouton de l'ultime si nécessaire
+    if (activeCharacter.u === 3) {
+      activeCharacter.ultReady = true;
+    }
+  
+    this.createActionButton(activeCharacter.ult, 3, activeCharacter.ultReady);
   }
 
   restrictVisionToCharacter(character) {
     // Cache toutes les cases
     this.grid.flat().forEach((tile) => {
-      tile.setFillStyle(0x000000); // Noir pour cacher
+      console.log(tile)
+      tile.setTint(0x000000); // Noir pour cacher
     });
 
     // Cache tous les obstacles, ennemis et personnages
@@ -295,7 +416,7 @@ export default class Combat extends Phaser.Scene {
             (ob) => ob.gridX === targetX && ob.gridY === targetY
           );
           obstacle.setVisible(true);
-          tile.setFillStyle(baseColor); // Restaure la couleur de la case
+          tile.setTint(baseColor); // Restaure la couleur de la case
         } else if (
           this.enemies.some((en) => en.x === targetX && en.y === targetY)
         ) {
@@ -303,7 +424,7 @@ export default class Combat extends Phaser.Scene {
             (en) => en.x === targetX && en.y === targetY
           );
           enemy.visual.setVisible(true);
-          tile.setFillStyle(baseColor); // Restaure la couleur de la case
+          tile.setTint(baseColor); // Restaure la couleur de la case
         } else if (
           this.characters.some(
             (ch) => ch.x === targetX && ch.y === targetY && ch !== character
@@ -313,9 +434,9 @@ export default class Combat extends Phaser.Scene {
             (ch) => ch.x === targetX && ch.y === targetY && ch !== character
           );
           otherChar.visual.setVisible(true);
-          tile.setFillStyle(baseColor); // Restaure la couleur de la case
+          tile.setTint(baseColor); // Restaure la couleur de la case
         } else {
-          tile.setFillStyle(baseColor); // Restaure uniquement les cases adjacentes visibles
+          tile.setTint(baseColor); // Restaure uniquement les cases adjacentes visibles
         }
       }
     });
@@ -324,17 +445,24 @@ export default class Combat extends Phaser.Scene {
     character.visual.setVisible(true);
 
     // Met en surbrillance les cases où le personnage peut se déplacer
-    this.highlightMovableTiles(character);
+    //this.highlightMovableTiles(character);
   }
 
-  createActionButton(actionName, actionIndex, ready = true) {
-    const offsetX = 10;
-    const offsetY = 120 + actionIndex * 30;
+  createActionButton(action, actionIndex, ready = true) {
+    const offsetX = -3000; // Garder l'alignement à gauche
+    const offsetY = 0 + actionIndex * 800; // Espacement entre les boutons
     const backgroundColor = actionIndex === 3 && !ready ? "#ff0000" : "#444";
-
+  
+    // Ajout de l'image d'action
+    const actionImage = this.add
+      .image(offsetX + 500, offsetY - 300, action.icon) // Positionner l'image
+      .setScale(2)
+      .setOrigin(0.5);
+  
+    // Ajout du bouton texte
     const button = this.add
-      .text(offsetX, offsetY, actionName, {
-        fontSize: "14px",
+      .text(offsetX, offsetY, action.name, {
+        fontSize: "100px", // Réduire la taille du texte du bouton
         fill: "#fff",
         backgroundColor,
         padding: { x: 10, y: 5 },
@@ -347,8 +475,11 @@ export default class Combat extends Phaser.Scene {
           this.handleAction(actionIndex);
         }
       });
-
+  
     button.isActionButton = true;
+    actionImage.isActionButton = true;
+  
+    this.uiContainer.add(actionImage);
     this.uiContainer.add(button);
   }
 
@@ -418,7 +549,7 @@ export default class Combat extends Phaser.Scene {
     const startTile = this.grid[character.x][character.y];
     const startColor =
       (character.x + character.y) % 2 === 0 ? 0xffffff : 0xff8851;
-    startTile.setFillStyle(startColor);
+    startTile.setTint(startColor);
     tilesRevealed.push(startTile);
 
     while (
@@ -436,7 +567,7 @@ export default class Combat extends Phaser.Scene {
       ) {
         // S'arrête sur un obstacle
         console.log("Obstacle rencontré !");
-        tile.setFillStyle((targetX + targetY) % 2 === 0 ? 0xffffff : 0xff8851); // Révèle la case
+        tile.setTint((targetX + targetY) % 2 === 0 ? 0xffffff : 0xff8851); // Révèle la case
         tilesRevealed.push(tile);
         break;
       }
@@ -450,7 +581,7 @@ export default class Combat extends Phaser.Scene {
         console.log(
           `Ennemi touché à (${targetX}, ${targetY}), HP restant : ${enemy.hp}`
         );
-        tile.setFillStyle(
+        tile.setTint(
           (targetX + targetY + 3) % 2 === 0 ? 0xffffff : 0xff8851
         ); // Révèle la case
         tilesRevealed.push(tile);
@@ -458,7 +589,7 @@ export default class Combat extends Phaser.Scene {
       }
 
       // Révèle le chemin
-      tile.setFillStyle((targetX + targetY) % 2 === 0 ? 0xffffff : 0xff8851);
+      tile.setTint((targetX + targetY) % 2 === 0 ? 0xffffff : 0xff8851);
       tilesRevealed.push(tile);
 
       targetX += direction.x;
@@ -503,7 +634,7 @@ export default class Combat extends Phaser.Scene {
 
         // Révèle la case en couleur
         const baseColor = (targetX + targetY) % 2 === 0 ? 0xffffff : 0xff8851;
-        tile.setFillStyle(baseColor);
+        tile.setTint(baseColor);
       }
     });
   }
@@ -530,10 +661,10 @@ export default class Combat extends Phaser.Scene {
 
     const dimGridAndObstacles = () => {
       this.grid.flat().forEach((tile) => {
-        tile.setFillStyle(0x333333); // Assombrit toutes les cases
+        tile.setTint(0x333333); // Assombrit toutes les cases
       });
       this.obstacles.forEach((obstacle) => {
-        obstacle.setFillStyle(0x333333); // Assombrit les obstacles
+        obstacle.setTint(0x333333); // Assombrit les obstacles
       });
     };
 
@@ -541,10 +672,10 @@ export default class Combat extends Phaser.Scene {
       this.grid.flat().forEach((tile) => {
         const baseColor =
           (tile.gridX + tile.gridY) % 2 === 0 ? 0xffffff : 0x5fffff;
-        tile.setFillStyle(baseColor); // Restaure les couleurs du plateau
+        tile.setTint(baseColor); // Restaure les couleurs du plateau
       });
       this.obstacles.forEach((obstacle) => {
-        obstacle.setFillStyle(0xff00ff); // Restaure la couleur des obstacles
+        obstacle.setTint(0xff00ff); // Restaure la couleur des obstacles
       });
       this.characters.forEach((char) => {
         char.visual.setAlpha(1); // Réinitialise l'opacité des personnages
@@ -717,7 +848,7 @@ export default class Combat extends Phaser.Scene {
   }
 
   dimGridAndHighlightCharacter(character) {
-    this.grid.flat().forEach((tile) => tile.setFillStyle(0x333333)); // Assombrit la grille
+    this.grid.flat().forEach((tile) => tile.setTint(0x333333)); // Assombrit la grille
     character.visual.setAlpha(1); // Met en évidence le personnage actif
   }
 
@@ -736,17 +867,17 @@ export default class Combat extends Phaser.Scene {
     );
 
     validTiles.forEach((tile) => {
-      tile.setFillStyle(0x87cefa); // Surligne les cases valides
+      tile.setTint(0x87cefa); // Surligne les cases valides
       tile.setInteractive().on("pointerdown", () => {
         character.x = tile.gridX;
         character.y = tile.gridY;
 
         const offsetX =
-          (this.cameras.main.width - this.grid[0].length * 64) / 2;
-        const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+          (this.cameras.main.width - this.grid[0].length * 512) / 2;
+        const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
 
-        character.visual.x = tile.gridX * 64 + offsetX + 32;
-        character.visual.y = tile.gridY * 64 + offsetY + 32;
+        character.visual.x = tile.gridX * 512 + offsetX + 256;
+        character.visual.y = tile.gridY * 512 + offsetY + 256;
 
         this.clearTileHighlights(); // Supprime les surlignages
         this.grid.flat().forEach((tile) => tile.removeInteractive()); // Désactive les clics
@@ -802,15 +933,15 @@ export default class Combat extends Phaser.Scene {
           ally.y = tempY;
 
           const offsetX =
-            (this.cameras.main.width - this.grid[0].length * 64) / 2;
+            (this.cameras.main.width - this.grid[0].length * 512) / 2;
           const offsetY =
-            (this.cameras.main.height - this.grid.length * 64) / 2;
+            (this.cameras.main.height - this.grid.length * 512) / 2;
 
           // Met à jour les positions visuelles
-          character.visual.x = character.x * 64 + offsetX + 32;
-          character.visual.y = character.y * 64 + offsetY + 32;
-          ally.visual.x = ally.x * 64 + offsetX + 32;
-          ally.visual.y = ally.y * 64 + offsetY + 32;
+          character.visual.x = character.x * 512 + offsetX + 256;
+          character.visual.y = character.y * 512 + offsetY + 256;
+          ally.visual.x = ally.x * 512 + offsetX + 256;
+          ally.visual.y = ally.y * 512 + offsetY + 256;
 
           // Désactive les clics et nettoie
           this.characters.forEach((char) => char.visual.removeInteractive());
@@ -841,11 +972,11 @@ export default class Combat extends Phaser.Scene {
       char.buff = savedChar.buffs;
       char.hasActed = savedChar.hasActed; // Restaure l'état d'action
 
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
+      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
 
-      char.visual.x = char.x * 64 + offsetX + 32;
-      char.visual.y = char.y * 64 + offsetY + 32;
+      char.visual.x = char.x * 512 + offsetX + 256;
+      char.visual.y = char.y * 512 + offsetY + 256;
     });
 
     // Restaurer les ennemis
@@ -857,17 +988,17 @@ export default class Combat extends Phaser.Scene {
       enemy.debuff = savedEnemy.debuff;
       enemy.hasActed = savedEnemy.hasActed; // Restaure l'état d'action
 
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
+      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
 
-      enemy.visual.x = enemy.x * 64 + offsetX + 32;
-      enemy.visual.y = enemy.y * 64 + offsetY + 32;
+      enemy.visual.x = enemy.x * 512 + offsetX + 256;
+      enemy.visual.y = enemy.y * 512 + offsetY + 256;
     });
 
     // Restaurer l'état de la grille
     lastState.gridState.forEach((savedTile) => {
       const tile = this.grid[savedTile.x][savedTile.y];
-      tile.setFillStyle(savedTile.color);
+      tile.setTint(savedTile.color);
     });
 
     this.activeCharacterIndex = lastState.activeCharacterIndex;
@@ -883,8 +1014,13 @@ export default class Combat extends Phaser.Scene {
 
     const activeCharacter = this.getCurrentEntity();
     if (activeCharacter.u < 3) activeCharacter.u++;
+
+    // Réinitialiser les surbrillances
+    this.grid.forEach((column) =>
+      column.forEach((tile) => tile.clearTint())
+    );
+
     activeCharacter.act = false;
-    this.clearTileHighlights();
     this.startEnemyTurn();
   }
 
@@ -985,6 +1121,16 @@ export default class Combat extends Phaser.Scene {
               otherEnemy.y === newY
           )
         ) {
+          enemy.x = newX;
+          enemy.y = newY;
+
+          const offsetX =
+            (this.cameras.main.width - this.grid[0].length * 512) / 2;
+          const offsetY =
+            (this.cameras.main.height - this.grid.length * 512) / 2;
+
+          enemy.visual.x = enemy.x * 512 + offsetX + 256;
+          enemy.visual.y = enemy.y * 512 + offsetY + 256;
           distanceMatrix[newX][newY] = current.distance + 1;
           queue.push({ x: newX, y: newY, distance: current.distance + 1 });
         }
@@ -1017,11 +1163,11 @@ export default class Combat extends Phaser.Scene {
       enemy.x = bestMove.x;
       enemy.y = bestMove.y;
 
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
+      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
+      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
 
-      enemy.visual.x = enemy.x * 64 + offsetX + 32;
-      enemy.visual.y = enemy.y * 64 + offsetY + 32;
+      enemy.visual.x = enemy.x * 512 + offsetX + 256;
+      enemy.visual.y = enemy.y * 512 + offsetY + 256;
     }
 
     this.time.delayedCall(500, callback);
@@ -1037,46 +1183,9 @@ export default class Combat extends Phaser.Scene {
     this.updateUI();
   }
 
-  highlightMovableTiles(entity) {
-    if (this.playerHasMoved || entity.name === "Enregistreur") {
-      this.clearTileHighlights(); // Pas de surbrillance si l'enregistreur est actif
-      return;
-    }
-    const directions = [
-      { x: 0, y: -1 }, // Haut
-      { x: 0, y: 1 }, // Bas
-      { x: -1, y: 0 }, // Gauche
-      { x: 1, y: 0 }, // Droite
-    ];
-
-    directions.forEach((dir) => {
-      const targetX = entity.x + dir.x;
-      const targetY = entity.y + dir.y;
-
-      if (
-        targetX >= 0 &&
-        targetX < this.grid.length &&
-        targetY >= 0 &&
-        targetY < this.grid[0].length &&
-        !this.grid[targetX][targetY].isObstacle &&
-        this.grid[targetX][targetY].fillColor !== 0x000000 // Vérifie si la case est visible
-      ) {
-        this.grid[targetX][targetY].setFillStyle(0x87cefa); // Bleu clair pour indiquer les cases accessibles
-      }
-    });
-  }
-
-  clearTileHighlights() {
-    this.grid.flat().forEach((tile) => {
-      const baseColor =
-        (tile.gridX + tile.gridY) % 2 === 0 ? 0xffffff : 0x5fffff;
-      tile.setFillStyle(baseColor);
-    });
-  }
-
   handleTileClick(tile) {
     if (this.isEnemyTurn || this.playerHasMoved) return;
-
+  
     const activeCharacter = this.characters[this.activeCharacterIndex];
 
     // Vérifie si le personnage actif est l'enregistreur
@@ -1088,7 +1197,7 @@ export default class Combat extends Phaser.Scene {
     const distance =
       Math.abs(tile.gridX - activeCharacter.x) +
       Math.abs(tile.gridY - activeCharacter.y);
-
+  
     if (
       distance === 1 &&
       !tile.isObstacle &&
@@ -1096,21 +1205,31 @@ export default class Combat extends Phaser.Scene {
         (char) => char.x === tile.gridX && char.y === tile.gridY
       )
     ) {
+      const dx = tile.gridX - activeCharacter.x;
+      const dy = tile.gridY - activeCharacter.y;
+  
+      // Ajuste la position
       activeCharacter.x = tile.gridX;
       activeCharacter.y = tile.gridY;
-
-      const offsetX = (this.cameras.main.width - this.grid[0].length * 64) / 2;
-      const offsetY = (this.cameras.main.height - this.grid.length * 64) / 2;
-
-      activeCharacter.visual.x = tile.gridX * 64 + offsetX + 32;
-      activeCharacter.visual.y = tile.gridY * 64 + offsetY + 32;
-
+  
+      // Définit l'angle en fonction de la direction
+      if (dx === 1) activeCharacter.visual.setAngle(90); // Droite
+      else if (dx === -1) activeCharacter.visual.setAngle(270); // Gauche
+      else if (dy === 1) activeCharacter.visual.setAngle(180); // Bas
+      else if (dy === -1) activeCharacter.visual.setAngle(0); // Haut
+  
+      const offsetX = (this.cameras.main.width - this.grid[0].length * 512) / 2;
+      const offsetY = (this.cameras.main.height - this.grid.length * 512) / 2;
+  
+      activeCharacter.visual.x = tile.gridX * 512 + offsetX + 256;
+      activeCharacter.visual.y = tile.gridY * 512 + offsetY + 256;
+  
       this.playerHasMoved = true;
-
-      this.clearTileHighlights();
+  
       this.updateUI();
     }
   }
+  
 
   getCurrentEntity() {
     return this.characters[this.activeCharacterIndex];
